@@ -1,0 +1,47 @@
+{% extends "loggedin.html" %}
+{% load materializecss %}
+
+{% block content %}
+    <div class="service-card">
+        <div class="service-picture">
+            <img src="{{ form.service.logo_url }}"
+                 alt="{{ form.service.verbose_name }}">
+            <br>
+        </div>
+
+        <div class="service-description">
+            <h4 class="muted">{{ form.service.app_config.verbose_name }}</h4>
+            <p><a href="{{ form.service.app_config.url }}" class="muted">{{ form.service.app_config.url }}</a></p>
+            <p class="muted">{{ form.service.app_config.description }}</p>
+
+            {% block form_wrapper %}
+                {# edit integration form #}
+                <form action="." method="post" id="edit-integration">
+                    {% block form %}{% materialize_form form %}{% endblock %}
+                </form>
+
+                {# delete integration form #}
+                {% if form.integration %}
+                    <form action="{% url 'web_delete_integration' form.service.label form.integration.id %}"
+                          method="post"
+                          id="delete-integration">{% csrf_token %}
+                    </form>
+                {% endif %}
+
+                {# submit buttons #}
+                <button type="submit" class="btn" form="edit-integration">
+                    <i class="mdi-action-done"></i>
+                    Save changes
+                </button>
+                {% if form.integration %}
+                    <button type="submit" class="btn right red" form="delete-integration">
+                        <i class="mdi-action-delete"></i>
+                        Delete Integration
+                    </button>
+                {% endif %}
+
+            {% endblock %}
+        </div>
+    </div>
+
+{% endblock %}

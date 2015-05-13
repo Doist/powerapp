@@ -1,0 +1,10 @@
+/tests/fixtures
+/dist
+/build
+/.idea
+/node_modules
+.DS_Store
+.env
+*.pyc
+*.swp
+*.egg-info

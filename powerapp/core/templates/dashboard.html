@@ -1,0 +1,31 @@
+{% extends "loggedin.html" %}
+{% load staticfiles %}
+
+{% block content %}
+    <div class="row">
+        <div class="col s6 title">Dashboard</div>
+        <div class="col s6 right-align">
+            <a class="top-action-button" href="{% url 'web_services' %}">
+                <i class="mdi-content-add"></i> add service</a>
+        </div>
+    </div>
+
+    {% for integration in integrations %}
+    <form method="post" id="delete-integration-{{ integration.id }}"
+          action="{% url 'web_delete_integration' service_id=integration.service_id integration_id=integration.id %}">
+        {% csrf_token %}
+    </form>
+
+    <div class="dashboard-card">
+        <img src="{{ integration.service.logo_url }}"
+             alt="{{ integration.name }}">
+        <p>{{ integration.name }}</p>
+        <div class="actions">
+            <a href="{% url 'web_edit_integration' service_id=integration.service_id integration_id=integration.id %}"
+               class="btn left">Edit</a>
+            <button type="submit" class="btn red right" form="delete-integration-{{ integration.id }}">Delete</button>
+        </div>
+    </div>
+    {% endfor %}
+
+{% endblock %}

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+echo "Run ./manage.py migrate"
+python ./manage.py migrate
+echo "Run ./manage.py collect_services"
+python ./manage.py collect_services

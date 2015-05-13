@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block usermenu %}
+
+    <form method="post" action="{% url 'web_logout' %}" class="hide" id="logout-form">{% csrf_token %}</form>
+
+    <ul id="usermenu-items" class="usermenu-items dropdown-content">
+        <li><a href="https://todoist.com" target="_blank">open Todoist</a></li>
+        <li class="divider"></li>
+        <li><a href="{% url 'web_logout' %}" id="logout-link">logout</a></li>
+    </ul>
+
+    <a class="powerapp-usermenu" href="#!" data-activates="usermenu-items">
+        {% static 'img/default_avatar28px.png' as default_avatar %}
+        <img src="{{ user.api.user.get.avatar_small|default:default_avatar }}">
+        {{ user.api.user.get.full_name }}
+        <i class="mdi-navigation-arrow-drop-down right"></i>
+    </a>
+{% endblock %}
+
+{% block main %}
+    <div class="powerapp-main">
+
+        <div class="powerapp-left">
+            <ul class="left-menu">
+                <li{% if active == "dashboard" %} class="active"{% endif %}><a href="{% url 'web_index' %}">Dashboard</a></li>
+                <li{% if active == "services" %} class="active"{% endif %}><a href="{% url 'web_services' %}">Services</a></li>
+            </ul>
+        </div>
+
+        <div class="powerapp-content">
+            {% block content %}{% endblock %}
+        </div>
+
+    </div>
+{% endblock %}

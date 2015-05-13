@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block main %}
+    <div class="powerapp-main-plain">
+        <div class="valign">
+            <h3>Welcome to Todoist PowerApps</h3>
+            <p>Log in with your Todoist account</p>
+            <a class="waves-effect waves-light btn-large"
+               href="{{ authorize_url }}">
+                get started</a>
+        </div>
+    </div>
+{% endblock %}

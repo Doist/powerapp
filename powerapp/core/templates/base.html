@@ -1,0 +1,30 @@
+{% load staticfiles core %}<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'js/script.js' %}"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <script>
+        var django_messages = {{ messages|to_json }}
+    </script>
+</head>
+
+<body>
+    <div class="powerapp-header">
+
+        <a class="powerapp-logo" href="{% url 'web_index' %}">
+            <img src="{% static 'img/logo30px.png' %}" />
+            PowerApp
+        </a>
+
+        {% block usermenu %}
+        {% endblock %}
+    </div>
+
+    {% block main %}
+    {% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+echo "Populate requirements.txt with extra services"
+for req in ${POWERAPP_SERVICES:-}; do
+    # clean up the requirement string from commas and some others
+    # undesireable simbols, and populate the requirements.txt
+    req=${req//[,;]}
+    echo "---> $req"
+    echo "$req" >> requirements.txt
+done
+echo "Create empty .env file"
+touch .env

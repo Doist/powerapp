@@ -1,0 +1,24 @@
+{
+  "name": "PowerApp",
+  "description": "A tool to extend the functionality of your Todoist account by integrating it with third-party applications",
+  "keywords": ["todoist", "productivity"],
+  "env": {
+    "COOKIE_SECRET": {
+      "description": "A secret key for verifying the integrity of signed cookies.",
+      "generator": "secret"
+    },
+    "TODOIST_CLIENT_ID": {
+      "description": "Todoist Client ID. Create your client at https://developer.todoist.com/appconsole.html"
+    },
+    "TODOIST_CLIENT_SECRET": {
+      "description": "Todoist Client Secret. Create your client at https://developer.todoist.com/appconsole.html"
+    },
+    "POWERAPP_SERVICES": {
+"description": "Optional space-separated list of PowerApp services (packages from PyPI or git repos)",
+      "required": false
+    }
+  },
+  "addons": [
+    "heroku-postgresql"
+  ]
+}

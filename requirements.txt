@@ -1,0 +1,4 @@
+# Heroku requirements file
+uwsgi
+psycopg2
+-e .
