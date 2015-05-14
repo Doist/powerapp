@@ -2,7 +2,6 @@
 from django.contrib import auth, messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render, get_object_or_404
-from django.http import Http404
 from django.core.urlresolvers import reverse
 from django.views.decorators.http import require_POST
 from powerapp.core.exceptions import PowerAppError

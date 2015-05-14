@@ -109,8 +109,6 @@ API_ENDPOINT = env('API_ENDPOINT')
 TODOIST_CLIENT_ID = env('TODOIST_CLIENT_ID')
 TODOIST_CLIENT_SECRET = env('TODOIST_CLIENT_SECRET')
 
-SITE_URL = env('SITE_URL')
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

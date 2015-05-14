@@ -142,9 +142,6 @@ class OAuthClient(object):
     def get_client_secret(self):
         return getattr(settings, self.client_secret)
 
-    def get_oauth2cb_uri(self):
-        return settings.SITE_URL + reverse('web_oauth2cb')
-
     def get_authorize_url(self, **kwargs):
         """
         :param kwargs: extra params for authorize url which will overwrite
@@ -154,7 +151,6 @@ class OAuthClient(object):
             'client_id': self.get_client_id(),
             'scope': self.scope or '',
             'state': self.create_state(),
-            'redirect_uri': self.get_oauth2cb_uri(),
         }
         qs.update(kwargs)
         return extend_qs(self.authorize_endpoint, **qs)
@@ -164,7 +160,6 @@ class OAuthClient(object):
             'client_id': self.get_client_id(),
             'client_secret': self.get_client_secret(),
             'code': code,
-            'redirect_uri': self.get_oauth2cb_uri(),
             'grant_type': 'authorization_code',
         }
         resp = requests.post(self.access_token_endpoint, data=post_data)
