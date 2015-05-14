@@ -32,7 +32,7 @@ def login(request):
         return redirect('web_index')
 
     client = oauth.get_client_by_name('todoist')
-    authorize_url = client.get_authorize_url()
+    authorize_url = client.get_authorize_url(request)
     client.set_state(request)
     return render(request, 'login.html', {'authorize_url': authorize_url})
 
@@ -46,7 +46,7 @@ def oauth2cb(request):
     try:
         client = oauth.get_client_by_state(request)
         code = request.GET['code']
-        access_token, refresh_token = client.exchange_code_for_token(code)
+        access_token, refresh_token = client.exchange_code_for_token(request, code)
     except PowerAppError as e:
         return render(request, 'oauth2cb.html', {'error': str(e)})
 

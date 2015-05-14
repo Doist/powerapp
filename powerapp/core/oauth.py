@@ -45,7 +45,7 @@ class register_oauth_client(object):
                  scope=None,
                  client_id=None, client_secret=None,
                  callback_class=None,
-                 oauth2cb_redirect_uri='/',):
+                 oauth2cb_redirect_uri='/', redirect_uri_required=True):
         self.name = name
         self.authorize_endpoint = authorize_endpoint
         self.access_token_endpoint = access_token_endpoint
@@ -54,6 +54,7 @@ class register_oauth_client(object):
         self.client_secret = client_secret
         self.callback_class = callback_class or OAuthClient
         self.oauth2cb_redirect_uri = oauth2cb_redirect_uri
+        self.redirect_uri_required = redirect_uri_required
 
     def __call__(self, fn):
         instance = self.callback_class(self.name, fn,
@@ -62,7 +63,8 @@ class register_oauth_client(object):
                                        scope=self.scope,
                                        client_id=self.client_id,
                                        client_secret=self.client_secret,
-                                       oauth2cb_redirect_uri=self.oauth2cb_redirect_uri)
+                                       oauth2cb_redirect_uri=self.oauth2cb_redirect_uri,
+                                       redirect_uri_required=self.redirect_uri_required)
         oauth_clients[self.name] = instance
         return fn
 
@@ -125,7 +127,8 @@ class OAuthClient(object):
 
     def __init__(self, name, callback_fn, authorize_endpoint,
                  access_token_endpoint, scope=None, client_id=None,
-                 client_secret=None, oauth2cb_redirect_uri='/',):
+                 client_secret=None, oauth2cb_redirect_uri='/',
+                 redirect_uri_required=True):
         self.authorize_endpoint = authorize_endpoint
         self.access_token_endpoint = access_token_endpoint
         self.name = name
@@ -135,6 +138,7 @@ class OAuthClient(object):
         self.client_secret = client_secret or '%s_CLIENT_SECRET' % name.upper()
         self.oauth2cb_redirect_uri = oauth2cb_redirect_uri
         self.state = None
+        self.redirect_uri_required = redirect_uri_required
 
     def get_client_id(self):
         return getattr(settings, self.client_id)
@@ -142,7 +146,10 @@ class OAuthClient(object):
     def get_client_secret(self):
         return getattr(settings, self.client_secret)
 
-    def get_authorize_url(self, **kwargs):
+    def get_oauth2cb_uri(self, request):
+        return request.build_absolute_uri(reverse('web_oauth2cb'))
+
+    def get_authorize_url(self, request, **kwargs):
         """
         :param kwargs: extra params for authorize url which will overwrite
                        default params
@@ -152,16 +159,20 @@ class OAuthClient(object):
             'scope': self.scope or '',
             'state': self.create_state(),
         }
+        if self.redirect_uri_required:
+            qs['redirect_uri'] = self.get_oauth2cb_uri(request)
         qs.update(kwargs)
         return extend_qs(self.authorize_endpoint, **qs)
 
-    def exchange_code_for_token(self, code):
+    def exchange_code_for_token(self, request, code):
         post_data = {
             'client_id': self.get_client_id(),
             'client_secret': self.get_client_secret(),
             'code': code,
             'grant_type': 'authorization_code',
         }
+        if self.redirect_uri_required:
+            post_data['redirect_uri'] = self.get_oauth2cb_uri(request)
         resp = requests.post(self.access_token_endpoint, data=post_data)
         if resp.status_code != 200:
             logger.error('Unable to exchange OAuth code for token. '
