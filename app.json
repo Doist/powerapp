@@ -3,18 +3,18 @@
   "description": "A tool to extend the functionality of your Todoist account by integrating it with third-party applications",
   "keywords": ["todoist", "productivity"],
   "env": {
-    "COOKIE_SECRET": {
+    "SECRET_KEY": {
       "description": "A secret key for verifying the integrity of signed cookies.",
       "generator": "secret"
     },
     "TODOIST_CLIENT_ID": {
-      "description": "Todoist Client ID. Create your client at https://developer.todoist.com/appconsole.html"
+      "description": "Create your client at https://developer.todoist.com/appconsole.html and copy your personal client id from there"
     },
     "TODOIST_CLIENT_SECRET": {
-      "description": "Todoist Client Secret. Create your client at https://developer.todoist.com/appconsole.html"
+      "description": "Create your client at https://developer.todoist.com/appconsole.html and copy your personal client secret from there"
     },
     "POWERAPP_SERVICES": {
-"description": "Optional space-separated list of PowerApp services (packages from PyPI or git repos)",
+      "description": "Optional space-separated list of PowerApp services (packages from PyPI or git repos)",
       "required": false
     }
   },
