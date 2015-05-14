@@ -1,16 +1,8 @@
-#!/usr/bin/env bash
-echo "Populate requirements.txt with extra services"
-for req in ${POWERAPP_SERVICES:-}; do
-    # clean up the requirement string from commas and some others
-    # undesirable symbols
-    req=${req//[,;]}
-    # if it's a URL (search for slashes), extend it like this: "-e $url"
-    if [[ $req =~ "/" ]]; then
-        req="-e git+$req"
-    fi
-    # Save it to requirements file
-    echo "---> $req"
-    echo "$req" >> requirements.txt
-done
-echo "Create empty .env file"
-touch .env
+#!/usr/bin/env python
+import os, sys
+sys.path.insert(0, os.getcwd())
+
+
+from powerapp import devops_utils
+devops_utils.extend_requirements_txt()
+open('.env', 'w')
