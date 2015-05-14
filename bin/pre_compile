@@ -6,7 +6,7 @@ for req in ${POWERAPP_SERVICES:-}; do
     req=${req//[,;]}
     # if it's a URL (search for slashes), extend it like this: "-e $url"
     if [[ $req =~ "/" ]]; then
-        req="-e $req"
+        req="-e git+$req"
     fi
     # Save it to requirements file
     echo "---> $req"

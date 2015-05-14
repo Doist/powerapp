@@ -30,7 +30,7 @@ def install_requirements():
         if not service:
             continue
         if '/' in service:
-            args = ['-e', service]
+            args = ['-e', 'git+' + service]
         else:
             args = [service]
         logger.debug('Installing with pip: %r', args)
