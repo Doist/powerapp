@@ -13,6 +13,8 @@ from powerapp.core import oauth
 @login_required
 def dashboard(request):
     integrations = Integration.objects.filter(user=request.user)
+    if not integrations:
+        return redirect('web_services')
     return render(request, 'dashboard.html',  {
         'active': 'dashboard',
         'integrations': integrations
