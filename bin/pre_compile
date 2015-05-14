@@ -2,8 +2,13 @@
 echo "Populate requirements.txt with extra services"
 for req in ${POWERAPP_SERVICES:-}; do
     # clean up the requirement string from commas and some others
-    # undesireable simbols, and populate the requirements.txt
+    # undesireable simbols
     req=${req//[,;]}
+    # if it's a URL (search for slashes), extend it like this: "-e $url"
+    if [[ $req =~ "/" ]]; then
+        req="-e $req"
+    fi
+    # Save it to requirements file
     echo "---> $req"
     echo "$req" >> requirements.txt
 done
