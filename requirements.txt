@@ -1,4 +1,4 @@
 # Heroku requirements file
-uwsgi
+uWSGI
 psycopg2
 -e .

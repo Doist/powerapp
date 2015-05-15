@@ -5,4 +5,4 @@ sys.path.insert(0, os.getcwd())
 
 from powerapp import devops_utils
 devops_utils.extend_requirements_txt()
-open('.env', 'w')
+open('.env', 'a')
