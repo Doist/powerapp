@@ -11,8 +11,7 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.conf import settings
-
-from powerapp.core.models.user import User
+from powerapp.core.models import Integration
 
 
 FAST_SYNC_INTERVAL = datetime.timedelta(seconds=10 if settings.DEBUG else 30)
@@ -38,18 +37,9 @@ def accept(request):
         return HttpResponse()
 
     user_ids = {ev['user_id'] for ev in data}
-    for user_id in user_ids:
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            # this user has not been signed up to powerapp yet, just skip it
-            continue
-
-        # Mark user to sync "soon"
-        user.api_next_sync = now() + FAST_SYNC_INTERVAL
-        user.save()
-        logger.debug('Mark user %s as to be processed at %s',
-                     user, user.api_next_sync)
+    next_sync = now() + FAST_SYNC_INTERVAL
+    logger.debug('Mark integrations of user with ids %s as to be processed at %s', user_ids, next_sync)
+    Integration.objects.filter(user_id__in=user_ids).update(api_next_sync=next_sync)
 
     # Empty 200 OK response is enough to mark webhook as processed
     # on the server side

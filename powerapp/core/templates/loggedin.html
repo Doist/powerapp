@@ -14,7 +14,7 @@
     <a class="powerapp-usermenu" href="#!" data-activates="usermenu-items">
         {% static 'img/default_avatar28px.png' as default_avatar %}
         <img src="{{ user.api.user.get.avatar_small|default:default_avatar }}">
-        {{ user.api.user.get.full_name }}
+        {{ user.api.user.get.full_name|default:user.email }}
         <i class="mdi-navigation-arrow-drop-down right"></i>
     </a>
 {% endblock %}

@@ -1,4 +1,4 @@
-from powerapp.core.models.user import User
+from powerapp.core.models import User
 
 
 class TodoistUserAuth(object):

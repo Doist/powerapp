@@ -7,7 +7,7 @@ import re
 from powerapp.core.sync import TodoistAPI
 
 
-def get_personal_project(user, integration, project_name, pid_field='project_id'):
+def get_personal_project(integration, project_name, pid_field='project_id'):
     """
     It's a common thing for integrations to have personal projects, which they
     operate in.
@@ -17,24 +17,24 @@ def get_personal_project(user, integration, project_name, pid_field='project_id'
     it creates a new project with a given name, saves its id in the integration
     settings, and returns the object
     """
-    assert isinstance(user.api, TodoistAPI)  # IDE hint
+    assert isinstance(integration.api, TodoistAPI)  # IDE hint
 
     settings = integration.settings or {}
 
     # Try to find a project by id
     project_id = settings.get(pid_field)
     if project_id:
-        project = user.api.projects.get_by_id(project_id)
+        project = integration.api.projects.get_by_id(project_id)
         if project:
             return project
 
     # Project is not found. Search by project name, or create a new one
-    user.api.projects.sync()
-    projects = user.api.projects.all(filt=lambda p: p['name'] == project_name)
-    project = projects[0] if projects else user.api.projects.add(project_name)
+    integration.api.projects.sync()
+    projects = integration.api.projects.all(filt=lambda p: p['name'] == project_name)
+    project = projects[0] if projects else integration.api.projects.add(project_name)
 
     # commit all changes and update settings
-    user.api.commit()
+    integration.api.commit()
     integration.update_settings(**{pid_field: project['id']})
     return project
 

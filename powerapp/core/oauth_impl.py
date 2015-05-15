@@ -15,7 +15,7 @@ from powerapp.core.exceptions import PowerAppError
                        redirect_uri_required=False)
 def todoist_oauth(client, access_token, request, **kwargs):
     try:
-        user = User.register(access_token)
+        user = User.objects.register(access_token)
     except PowerAppError:
         raise Http404()
     client.save_access_token(user, access_token)

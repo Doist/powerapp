@@ -12,18 +12,18 @@ logger = getLogger(__name__)
 
 
 @receiver(AppConfig.signals.todoist_task_added)
-def on_task_added(sender, user=None, service=None, integration=None, obj=None, **kwargs):
+def on_task_added(sender, integration=None, obj=None, **kwargs):
     """
     Add a comment with a random cat to every new task
     """
     if obj['project_id'] != integration.settings['project']:
         return
 
-    assert isinstance(user.api, TodoistAPI)  # IDE hint
-    with user.api.autocommit():
+    assert isinstance(integration.api, TodoistAPI)  # IDE hint
+    with integration.api.autocommit():
         url, source_url = get_cat_picture()
         content = '%s (The cat API)' % source_url
-        user.api.notes.add(obj['id'], content,
+        integration.api.notes.add(obj['id'], content,
                            file_attachment=json.dumps({
                                'file_url': url,
                                'file_name': 'cat.jpg',

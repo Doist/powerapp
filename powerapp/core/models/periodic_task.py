@@ -27,7 +27,7 @@ class PeriodicTask(models.Model):
 
         # 2. run the task itself, as being asked
         logger.debug('Run periodic task %r', self.name)
-        task_fun.func(self.integration, self.integration.user)
+        task_fun.func(self.integration)
 
         # 3. update the database
         self.next_run = now() + task_fun.delta

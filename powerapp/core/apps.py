@@ -68,7 +68,7 @@ class ServiceAppSignals(object):
     """
     The registry of all signals which the service app can emit.
     """
-    SYNC_SIGNAL_ARGS = ['user', 'service', 'integration', 'obj']
+    SYNC_SIGNAL_ARGS = ['integration', 'obj']
 
     def __init__(self):
         self.todoist_project_added = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
@@ -82,6 +82,15 @@ class ServiceAppSignals(object):
         self.todoist_note_added = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
         self.todoist_note_updated = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
         self.todoist_note_deleted = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
+
+    def __getitem__(self, item):
+        """
+        :rtype: Signal
+        """
+        try:
+            return getattr(self, item)
+        except AttributeError:
+            raise KeyError('Signal %r not found' % item)
 
 
 class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, apps.AppConfig)):
@@ -122,49 +131,12 @@ class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, app
         self.export_settings()
         # import the submodule with signal handlers
         self.load_module('signals')
-        # make sure we know how to forward sync signals to all inventories
-        sync.sync_event.connect(self.sync_event_handler, dispatch_uid=self.name)
 
     def export_settings(self):
         re_variable = re.compile(r'^[A-Z0-9_]+$')
         for key, value in self.__class__.__dict__.items():
             if re_variable.match(key) and not hasattr(settings, key):
                 setattr(settings, key, value)
-
-    def sync_event_handler(self, sender, event_name=None, user=None, obj=None, **kwargs):
-        """
-        Helper function handling sync events and forwarding corresponding
-        events further. Most likely you will never need to call this method
-        manually by yourself. It works like this instead.
-
-        - someone calls poweapp.core.sync.sync(user)
-        - for every updated object the sync module generates
-          a `powerapp.core.sync.sync_event` event which is handled by this
-          handler
-        - the handler looks for the event type and tests if it's interested in
-          this type of event (in other words, if there are any listeners of the
-          event he's about to emit)
-        - if listeners found, we find all integrations for a particular
-          (service, user) pair, and emit events for them, one by one
-        """
-        # the event object we forward
-        event = getattr(self.signals, event_name)
-
-        # ignore the event if there's no listeners
-        if not event.has_listeners(None):
-            logger.debug('Event %s ignored by %s', event_name, self.name)
-            return
-
-        # take all integrations this user has, and send the signal: one by one
-        for integration in Integration.objects.filter(service__label=self.label,
-                                                      user_id=user.id):
-            logger.debug('Event %s sent to %s (%s)', event_name, self.name, integration)
-            result = event.send_robust(None, user=user,
-                                       service=integration.service,
-                                       integration=integration,
-                                       obj=obj)
-            for item in result:
-                logger.debug('-> %s', item)
 
     @classmethod
     def periodic_task(cls, delta, name=None):
