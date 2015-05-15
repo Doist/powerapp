@@ -36,6 +36,10 @@ LIVE_TIME_ACCESS_TOKEN = 2000  # seconds
 logger = getLogger(__name__)
 
 
+def base_response_parser(resp):
+    return resp.json()
+
+
 class register_oauth_client(object):
     """
     Decorator to register new OAuth client.
@@ -45,8 +49,11 @@ class register_oauth_client(object):
                  scope=None,
                  client_id=None, client_secret=None,
                  callback_class=None,
-                 oauth2cb_redirect_uri='/', redirect_uri_required=True):
+                 oauth2cb_redirect_uri='/',
+                 redirect_uri_required=True,
+                 response_parser=base_response_parser):
         self.name = name
+        self.response_parser = response_parser
         self.authorize_endpoint = authorize_endpoint
         self.access_token_endpoint = access_token_endpoint
         self.scope = scope
@@ -64,7 +71,7 @@ class register_oauth_client(object):
                                        client_id=self.client_id,
                                        client_secret=self.client_secret,
                                        oauth2cb_redirect_uri=self.oauth2cb_redirect_uri,
-                                       redirect_uri_required=self.redirect_uri_required)
+                                       response_parser=self.response_parser)
         oauth_clients[self.name] = instance
         return fn
 
@@ -128,10 +135,11 @@ class OAuthClient(object):
     def __init__(self, name, callback_fn, authorize_endpoint,
                  access_token_endpoint, scope=None, client_id=None,
                  client_secret=None, oauth2cb_redirect_uri='/',
-                 redirect_uri_required=True):
+                 redirect_uri_required=True, response_parser=base_response_parser):
         self.authorize_endpoint = authorize_endpoint
         self.access_token_endpoint = access_token_endpoint
         self.name = name
+        self.response_parser = response_parser
         self.callback_fn = callback_fn
         self.scope = scope
         self.client_id = client_id or '%s_CLIENT_ID' % name.upper()
@@ -179,7 +187,7 @@ class OAuthClient(object):
                          'Server said %r', resp.content)
             raise PowerAppError(resp.content)
 
-        json_resp = resp.json()
+        json_resp = self.response_parser(resp)
         return json_resp.get('access_token'), json_resp.get('refresh_token')
 
     def save_access_token(self, user, access_token):
