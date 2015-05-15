@@ -2,8 +2,8 @@
 """
 Todoist-related utils
 """
-from collections import namedtuple
 import re
+from collections import namedtuple
 from powerapp.core.sync import TodoistAPI
 
 

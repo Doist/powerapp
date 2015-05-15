@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import namedtuple
 import multiprocessing
 import time
 from logging import getLogger
@@ -13,6 +14,9 @@ from powerapp.core import periodic_tasks
 
 
 logger = getLogger(__name__)
+
+
+cron_task = namedtuple('cron_task', ['callable', 'kwargs', 'log_string'])
 
 
 class Command(NoArgsCommand):
@@ -33,15 +37,15 @@ class Command(NoArgsCommand):
 
             # run task sequentially or in parallel
             if concurrency == 1:
-                for task, kwargs in tasks:
-                    logger.debug('Cron: run %s%r', str(task), kwargs)
-                    task(**kwargs)
+                for task in tasks:
+                    logger.debug('Cron: run "%s"', task.log_string)
+                    task.callable(**task.kwargs)
             else:
                 connection.close()
                 pool = multiprocessing.Pool(processes=concurrency)
-                for task, kwargs in tasks:
-                    logger.debug('Cron: run %s%r', str(task), kwargs)
-                    pool.apply_async(task, kwds=kwargs)
+                for task in tasks:
+                    logger.debug('Cron: run "%s"', task.log_string)
+                    pool.apply_async(task.callable, kwds=task.kwargs)
                 pool.close()
                 pool.join()
 
@@ -57,10 +61,15 @@ class Command(NoArgsCommand):
         # close the connection immediately before we start pushing tasks to
         # the pool
         kwargs = {'resource_types': ['projects', 'items', 'notes']}
-        integrations = list(Integration.objects.filter(api_next_sync__lte=now()))
-        return [(i.api.sync, kwargs) for i in integrations]
+        ret = []
+        for i in Integration.objects.filter(api_next_sync__lte=now()):
+            ret.append(cron_task(i.api.sync, kwargs, '%s.api.sync()' % i))
+        return ret
 
     def get_cron_tasks(self):
         # same thing with iterator -> list here
-        tasks = list(periodic_tasks.get_pending())
-        return [(task.run, {}) for task in tasks]
+        tasks = periodic_tasks.get_pending()
+        ret = []
+        for task in tasks:
+            ret.append(cron_task(task.run, {}, '%s.run()' % task))
+        return ret
