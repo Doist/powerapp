@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-import re
 import requests
 import feedparser
 import time
 import datetime
 from logging import getLogger
-
 from django.conf import settings
 
 from .apps import AppConfig
@@ -28,9 +26,7 @@ def poll_hackernews_rss_feed(integration):
     if not isinstance(settings, dict):
         settings = {}
 
-    last_updated = settings.get('last_updated', 0)
     project = get_personal_project(integration, PROJECT_NAME)
-
     resp = requests.get(FEED_URL).content
     feed = feedparser.parse(resp)
 
@@ -38,26 +34,22 @@ def poll_hackernews_rss_feed(integration):
 
     with integration.api.autocommit():
         for entry in feed.entries:
-
             # filter out by last update
             if 'published_parsed' in entry:
                 published = int(time.mktime(entry.published_parsed))
-                if published < last_updated:
+                if published < settings.get('last_updated', 0):
                     continue
-                else:
-                    last_updated = published
 
             # filter out by currently known records
             if entry.link in known_urls:
                 continue
 
             content = u'%s (%s)' % (entry.link, entry.title)
+            logger.debug('Added hacker news %s' % content)
             integration.api.items.add(content, project['id'])
 
-    integration.settings = dict(settings,
-                                last_updated=last_updated,
+    integration.update_settings(last_updated=int(time.time()),
                                 project_id=project['id'])
-    integration.save()
 
 
 def get_urls(integration, project_id):
@@ -66,5 +58,5 @@ def get_urls(integration, project_id):
     items = integration.api.items.all(lambda i: i['project_id'] == project_id)
     for item in items:
         for url in extract_urls(item['content']):
-            urls.add(url)
+            urls.add(url.link)
     return urls

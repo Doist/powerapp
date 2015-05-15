@@ -41,7 +41,7 @@ class TodoistAPI(todoist.TodoistAPI):
 
         self.integration.api_state = self.serialize()
         self.integration.api_last_sync = now()
-        self.integration.save()
+        self.integration.save(update_fields=['api_state', 'api_last_sync'])
 
         self.emit_sync_signals(current_state, new_state)
         return new_state

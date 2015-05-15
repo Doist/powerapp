@@ -37,7 +37,7 @@ class Integration(models.Model):
 
     def update_settings(self, **kwargs):
         self.settings = dict(self.settings or {}, **kwargs)
-        self.save()
+        self.save(update_fields=['settings'])
 
     def reset_api(self):
         self.api_state = None
