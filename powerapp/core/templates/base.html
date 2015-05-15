@@ -9,6 +9,7 @@
     <script>
         var django_messages = {{ messages|to_json }}
     </script>
+    {% block extra_css %} {% endblock %}
 </head>
 
 <body>
