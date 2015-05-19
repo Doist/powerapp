@@ -15,7 +15,7 @@ SYNC_PERIOD = datetime.timedelta(minutes=1 if settings.DEBUG else 30)
 class Integration(models.Model):
 
     # Woohoo! Millenium!
-    LAST_SYNC_DEFAULT = make_aware(datetime.datetime(2000, 1, 1))
+    MILLENIUM = make_aware(datetime.datetime(2000, 1, 1))
 
     name = models.CharField(max_length=1024)
     service = models.ForeignKey('Service', max_length=1024)
@@ -24,27 +24,32 @@ class Integration(models.Model):
     settings = PickledObjectField(default={})
 
     # API client fields
+    stateless = models.BooleanField(default=True)
     api_state = PickledObjectField()
-    api_last_sync = models.DateTimeField(db_index=True, default=LAST_SYNC_DEFAULT)
-    api_next_sync = models.DateTimeField(db_index=True)
+    api_last_sync = models.DateTimeField(default=MILLENIUM)
+    api_next_sync = models.DateTimeField(default=MILLENIUM)
 
     def __str__(self):
         return self.name
 
     class Meta:
         app_label = 'core'
-        index_together = ['user', 'service']
+        index_together = [
+            ['user', 'service'],
+            ['stateless', 'api_next_sync']
+        ]
 
     def update_settings(self, **kwargs):
         self.settings = dict(self.settings or {}, **kwargs)
         self.save(update_fields=['settings'])
 
     def reset_api(self):
-        self.api_state = None
-        self.api_last_sync = None
-        self.api_next_sync = None
-        self.api = TodoistAPI.create(self)
-        self.api.user.sync()
+        if not self.stateless:
+            self.api_state = None
+            self.api_last_sync = self.MILLENIUM
+            self.api_next_sync = self.MILLENIUM
+            self.api = TodoistAPI.create(self)
+            self.api.user.sync()
 
     @cached_property
     def api(self):
@@ -64,6 +69,7 @@ class Integration(models.Model):
     def save(self, **kwargs):
         # move next_sync forward if needed
         threshold = self.api_last_sync or now()
-        if not self.api_next_sync or self.api_next_sync < threshold:
+        if not self.stateless and (not self.api_next_sync
+                                   or self.api_next_sync < threshold):
             self.api_next_sync = threshold + SYNC_PERIOD
         super(Integration, self).save(**kwargs)

@@ -5,7 +5,7 @@ import requests
 from logging import getLogger
 from django.dispatch.dispatcher import receiver
 from .apps import AppConfig
-from powerapp.core.sync import TodoistAPI
+from powerapp.core.sync import StatelessTodoistAPI
 
 
 logger = getLogger(__name__)
@@ -19,7 +19,7 @@ def on_task_added(sender, integration=None, obj=None, **kwargs):
     if obj['project_id'] != integration.settings['project']:
         return
 
-    assert isinstance(integration.api, TodoistAPI)  # IDE hint
+    assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
     with integration.api.autocommit():
         url, source_url = get_cat_picture()
         content = '%s (The cat API)' % source_url

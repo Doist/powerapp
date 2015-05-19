@@ -4,7 +4,7 @@ Todoist-related utils
 """
 import re
 from collections import namedtuple
-from powerapp.core.sync import TodoistAPI
+from powerapp.core.sync import UserTodoistAPI
 
 
 def get_personal_project(integration, project_name, pid_field='project_id'):
@@ -17,24 +17,26 @@ def get_personal_project(integration, project_name, pid_field='project_id'):
     it creates a new project with a given name, saves its id in the integration
     settings, and returns the object
     """
-    assert isinstance(integration.api, TodoistAPI)  # IDE hint
+    # we're using the "shared API", because in a stateless mode we don't
+    # have access to all user projects
+    api = integration.user.api
+    assert isinstance(api, UserTodoistAPI)  # IDE hint
 
     settings = integration.settings or {}
 
     # Try to find a project by id
     project_id = settings.get(pid_field)
     if project_id:
-        project = integration.api.projects.get_by_id(project_id)
+        project = api.projects.get_by_id(project_id)
         if project:
             return project
 
     # Project is not found. Search by project name, or create a new one
-    integration.api.projects.sync()
-    projects = integration.api.projects.all(filt=lambda p: p['name'] == project_name)
-    project = projects[0] if projects else integration.api.projects.add(project_name)
+    projects = api.projects.all(filt=lambda p: p['name'] == project_name)
+    project = projects[0] if projects else api.projects.add(project_name)
 
     # commit all changes and update settings
-    integration.api.commit()
+    api.commit()
     integration.update_settings(**{pid_field: project['id']})
     return project
 
