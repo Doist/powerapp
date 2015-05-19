@@ -14,7 +14,7 @@ from powerapp.core.todoist_utils import get_personal_project, extract_urls
 logger = getLogger(__name__)
 
 
-FEED_URL = 'https://news.ycombinator.com/rss'
+DEFAULT_FEED_URL = 'https://news.ycombinator.com/rss'
 PROJECT_NAME = 'HackerNews feed'
 
 
@@ -27,7 +27,7 @@ def poll_hackernews_rss_feed(integration):
         settings = {}
 
     project = get_personal_project(integration, PROJECT_NAME)
-    resp = requests.get(FEED_URL).content
+    resp = requests.get(integration.settings.get('feed_url', DEFAULT_FEED_URL)).content
     feed = feedparser.parse(resp)
 
     with integration.api.autocommit():
