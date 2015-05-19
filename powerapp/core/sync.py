@@ -127,9 +127,10 @@ class StatefulTodoistAPI(TodoistAPI):
         new_state = super(StatefulTodoistAPI, self).sync(commands, **kwargs)
         return_or_raise(new_state)
 
-        self.integration.api_state = self.serialize()
-        self.integration.api_last_sync = now()
-        self.integration.save(update_fields=['api_state', 'api_last_sync'])
+        if kwargs.pop('save_state', True):
+            self.integration.api_state = self.serialize()
+            self.integration.api_last_sync = now()
+            self.integration.save(update_fields=['api_state', 'api_last_sync'])
 
         self.emit_sync_signals(current_state, new_state)
         return new_state
@@ -162,4 +163,4 @@ class StatefulTodoistAPI(TodoistAPI):
                     event_name = 'todoist_%s_added' % event_type
 
                 signal_obj = self.integration.app_config.signals[event_name]
-                signal_obj.fire()
+                signal_obj.fire(self.integration, obj)

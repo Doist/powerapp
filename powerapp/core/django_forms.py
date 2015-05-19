@@ -49,7 +49,9 @@ class IntegrationForm(forms.Form):
                                            user=self.user)
         integration_settings = dict(self.cleaned_data)
         self.integration.name = integration_settings.pop('name')
+        # we intentionally don't use "self.integration.update_settings" here,
+        # because we want to save integration with its settings with one command
+        self.integration.settings = dict(self.integration.settings or {},
+                                         **integration_settings)
         self.integration.save()
-
-        self.integration.update_settings(**integration_settings)
         return self.integration
