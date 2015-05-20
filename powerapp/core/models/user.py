@@ -4,10 +4,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.conf import settings
 from django.utils.functional import cached_property
-from django.utils.timezone import now
+from django.utils.timezone import now, make_aware
 from picklefield.fields import PickledObjectField
 from todoist.api import TodoistAPI
-
+from powerapp.core.sync import UserTodoistAPI
 
 SYNC_PERIOD = datetime.timedelta(minutes=1 if settings.DEBUG else 30)
 
@@ -32,6 +32,9 @@ class UserManager(models.Manager):
 
 class User(AbstractBaseUser):
 
+    # Woohoo! Millenium!
+    MILLENIUM = make_aware(datetime.datetime(2000, 1, 1))
+
     USERNAME_FIELD = 'id'
     objects = UserManager()
 
@@ -45,7 +48,7 @@ class User(AbstractBaseUser):
 
     # we use these data exclusively to keep track of user personal data
     api_state = PickledObjectField()
-    api_last_sync = models.DateTimeField(db_index=True)
+    api_last_sync = models.DateTimeField(default=MILLENIUM, db_index=True)
 
     @cached_property
     def api(self):
@@ -57,18 +60,15 @@ class User(AbstractBaseUser):
         For tasks and items most likely you should use integration-attached
         API objects
         """
-        if self.api_state:
-            obj = TodoistAPI.deserialize(self.api_state)
-        else:
-            obj = TodoistAPI(self.api_token)
-        obj.api_endpoint = settings.API_ENDPOINT
-
+        obj = UserTodoistAPI.create(self)
         if self.api_last_sync < now() - SYNC_PERIOD:
-            obj.user.sync()
-            self.api_last_sync = now()
-            self.api_state = obj.serialize()
-
+            obj.sync(resource_types=["projects", "labels", "filters"])
         return obj
+
+    def reset_api(self):
+        self.api_state = ''
+        self.api_last_sync = self.MILLENIUM
+        self.save()
 
     class Meta:
         app_label = 'core'

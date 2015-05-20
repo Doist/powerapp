@@ -7,11 +7,9 @@ from logging import getLogger
 from django import apps
 from django.conf import settings
 from django.conf.urls import url, include
-from django.dispatch import Signal
 from django.utils.six import with_metaclass
-from powerapp.core import sync
-from powerapp.core.models.integration import Integration
 
+from powerapp.core.app_signals import ServiceAppSignals
 
 logger = getLogger(__name__)
 
@@ -64,35 +62,6 @@ class ServiceAppConfigMeta(type):
         return type.__new__(mcs, name, bases, attrs)
 
 
-class ServiceAppSignals(object):
-    """
-    The registry of all signals which the service app can emit.
-    """
-    SYNC_SIGNAL_ARGS = ['integration', 'obj']
-
-    def __init__(self):
-        self.todoist_project_added = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_project_updated = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_project_deleted = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-
-        self.todoist_task_added = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_task_updated = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_task_deleted = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-
-        self.todoist_note_added = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_note_updated = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-        self.todoist_note_deleted = Signal(providing_args=self.SYNC_SIGNAL_ARGS)
-
-    def __getitem__(self, item):
-        """
-        :rtype: Signal
-        """
-        try:
-            return getattr(self, item)
-        except AttributeError:
-            raise KeyError('Signal %r not found' % item)
-
-
 class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, apps.AppConfig)):
     """
     Base class for the application config object of services
@@ -100,6 +69,15 @@ class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, app
     #: A special flag to denote that current Django app represents a
     #: powerapp service
     service = True
+
+    #: This flag has to be set to True if the application is "stateless"
+    #: Stateless application reacts immediately on webhooks, it's easier to
+    #: scale, but this app doesn't keep local model in sync, and you cannot
+    #: perform queries such as "api.items.all(...)" against it.
+    #:
+    #: We in Todoist love stateless apps, because Sync queries are kind of
+    #: expensive for us, so we encourage everyone to use this flag :)
+    stateless = True
 
     #: The registry of powerapp signals. We overwrite it in metaclass anyway,
     #: but this way it provides hints for IDEs

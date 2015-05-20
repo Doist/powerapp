@@ -20,5 +20,4 @@ class ProjectChoiceField(TypedChoiceField):
         return False
 
     def populate_with_user(self, user):
-        user.api.projects.sync()
         self.choices = user.api.projects.all()
