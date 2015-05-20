@@ -12,6 +12,7 @@ env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ['*']),
     API_ENDPOINT=(str, 'https://api.todoist.com'),
+    SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
 )
 env.read_env('.env')
 
@@ -23,9 +24,13 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
+# The SSL header to mark the connection as "secure". It's important for your
+# app to be behind the proxy.
+# Read https://docs.djangoproject.com/en/1.8/ref/settings/#secure-proxy-ssl-header
+# for more information.
+SECURE_PROXY_SSL_HEADER = env('SECURE_PROXY_SSL_HEADER')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
