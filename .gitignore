@@ -2,6 +2,8 @@
 /dist
 /build
 /.idea
+/.cache
+/.xprocess
 /node_modules
 .DS_Store
 .env
