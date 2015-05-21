@@ -20,7 +20,6 @@ class Integration(models.Model):
     name = models.CharField(max_length=1024)
     service = models.ForeignKey('Service', max_length=1024)
     user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    next_sync = models.IntegerField(db_index=True, default=0)
     settings = PickledObjectField(default={})
 
     # API client fields
