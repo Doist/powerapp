@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'powerapp.core',
+    'powerapp.sync_hub',
 ] + app_discovery()
 
 MIDDLEWARE_CLASSES = (
