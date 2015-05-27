@@ -28,7 +28,7 @@ class SyncHub(object):
 
     def push_task(self, source, task_id, task):
         """
-        Push the task to all queues on bahalf of `source`
+        Push the task to all queues on behalf of `source`
 
         The source can be a queue name, or a queue object. Task id has to be
         a local unique id of the task in the system backed by the source
@@ -52,6 +52,36 @@ class SyncHub(object):
             new_local_id = queue.push_task(local_id, task)
             self.replace_local_id(queue, meta_id, local_id, new_local_id)
 
+    def delete_task(self, source, task_id):
+        """
+        Delete a task from all other parties
+
+        The source can be a queue name, or a queue object. Task id has to be
+        a local unique id of the task in the system backed by the source
+        queue.
+
+        The function has to be called whenever a user deletes a task
+        """
+        source = self.get_source(source)
+
+        meta_id = self.get_meta_id(source, task_id)
+        if not meta_id:
+            # the task is not known to the hub, ignore it
+            return
+
+        id_mapping = self.get_id_mapping(meta_id)
+        for queue in self.queues:
+            if queue == source:
+                continue
+            local_id = id_mapping.get(queue.name, None)
+            if local_id:
+                # otherwise the task is not known to that queue,
+                # nothing to delete
+                queue.delete_task(local_id)
+
+        # clean up all traces of the object
+        self.delete_id_mapping(meta_id)
+
     def get_id_mapping(self, meta_id):
         """
         Given the meta id, return the dict with the mapping
@@ -59,6 +89,10 @@ class SyncHub(object):
         """
         items = LocalItem.objects.hub_filter(self, meta_item_id=meta_id)
         return {i[0]: i[1] for i in items.values_list('queue_name', 'local_id')}
+
+    def delete_id_mapping(self, meta_id):
+        # it has to be deleted with all local ids as well
+        MetaItem.objects.hub_delete(self, id=meta_id)
 
     def get_meta_id(self, queue, local_id, item_hash=None, create=False):
         """
