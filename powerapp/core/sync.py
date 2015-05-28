@@ -16,7 +16,7 @@ class TodoistAPI(todoist.TodoistAPI):
     @contextmanager
     def autocommit(self):
         yield
-        self.commit()
+        return_or_raise(self.commit())
 
     @classmethod
     def create(cls, integration):
