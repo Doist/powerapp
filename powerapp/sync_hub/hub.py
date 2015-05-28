@@ -5,9 +5,13 @@ Sync bridge to perform synchronization of tasks between two (or more) items
 import hashlib
 import json
 import datetime
+from logging import getLogger
 from collections import namedtuple
 from django.utils.encoding import force_bytes, force_text
 from .models import MetaItem, LocalItem
+
+
+logger = getLogger(__name__)
 
 
 class SyncHub(object):
@@ -40,9 +44,14 @@ class SyncHub(object):
         source = self.get_source(source)
 
         task_hash = get_hash(task)
+        logger.debug('%r: push task %s -> %s', source, task_id, task)
         meta_id = self.get_meta_id(source, task_id,
                                    item_hash=task_hash,
                                    create=True)
+        if meta_id is None:
+            logger.debug('%r: skip', source)
+            # hash duplication
+            return
 
         id_mapping = self.get_id_mapping(meta_id)
         for queue in self.queues:
@@ -50,6 +59,10 @@ class SyncHub(object):
                 continue
             local_id = id_mapping.get(queue.name, None)
             new_local_id = queue.push_task(local_id, task)
+            if new_local_id is None:
+                raise RuntimeError('The queue does not return an object id!')
+            logger.debug('Push task to queue %s. Replace local id %s -> %s',
+                         queue.name, local_id, new_local_id)
             self.replace_local_id(queue, meta_id, local_id, new_local_id)
 
     def delete_task(self, source, task_id):
@@ -99,20 +112,35 @@ class SyncHub(object):
         Given the queue object and a local id of the task inside a queue,
         return the "task meta id". If no such meta id found, create one, attach
         local id and meta id, and return it.
+
+        If create is False, and nothing is found, or if item_hash is provided
+        and equal to one stored in the database, return None
         """
         local_id = force_text(local_id)
 
         try:
             obj = LocalItem.objects.hub_get(self, queue_name=queue.name,
                                             local_id=local_id)
-            return obj.meta_item_id
+            logger.debug('Found local item %s, %s', queue, local_id)
+            if item_hash is not None:
+                if obj.meta_item.item_hash == item_hash:
+                    logger.debug('New object hash matches last seen. Skip')
+                    return None
+                else:
+                    obj.meta_item.item_hash = item_hash
+                    obj.meta_item.save(update_fields=['item_hash'])
+                    logger.debug('Update last seen object hash')
+                    return obj.meta_item_id
+
         except LocalItem.DoesNotExist:
+            logger.debug('Local item %s, %s not found', queue, local_id)
             if create:
                 meta_item = MetaItem.objects.hub_create(self, item_hash=item_hash)
                 LocalItem.objects.hub_create(self,
                                              queue_name=queue.name,
                                              local_id=local_id,
                                              meta_item=meta_item)
+                logger.debug('Create a new one with hash %s', item_hash)
                 return meta_item.id
 
     def replace_local_id(self, queue, meta_id, local_id, new_local_id):
@@ -173,6 +201,11 @@ class SyncQueue(object):
             raise RuntimeError('Unable to set the hub for the queue')
         self.hub = hub
 
+    @property
+    def api(self):
+        """:rtype: powerapp.core.sync.StatelessTodoistAPI"""
+        return self.hub.integration.api
+
     def __str__(self):
         return self.name
 
@@ -184,13 +217,14 @@ class SyncQueue(object):
 # around. Actually, it's based on a copy-paste of a Todoist task, bit in
 # your integration you don't always have to use all these fields. Just use
 # ones that make sense for your particular case
-Task = namedtuple('Task', ['checked', 'content', 'date_string', 'due_date',
-                           'in_history', 'indent', 'item_order', 'priority',
-                           'tags'])
+TASK_FIELDS = ['checked', 'content', 'date_string', 'due_date', 'in_history',
+               'indent', 'item_order', 'priority', 'tags']
+
+Task = namedtuple('Task', TASK_FIELDS)
 
 
 def task(checked=False, content='', date_string=None, due_date=None,
-         in_history=False, indent=0, item_order=0, priority=0, tags=None):
+         in_history=False, indent=1, item_order=0, priority=1, tags=None):
     """
     A helper function to create tasks
     """
