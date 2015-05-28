@@ -103,6 +103,10 @@ def webhook_to_django_signal(event_name):
         return None
     # item -> task
     obj = obj if obj != 'item' else 'task'
+
+    if action not in ('added', 'deleted'):
+        action = 'updated'
+
     full_name = 'todoist_%s_%s' % (obj, action)
     if hasattr(ServiceAppSignals(), full_name):
         return full_name
