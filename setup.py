@@ -24,7 +24,7 @@ setup(name='powerapp',
           'django-picklefield',
           'colorlog',
           'requests',
-          'feedparser',],
+          'feedparser'],
       entry_points={},
       classifiers=[
           'Development Status :: 3 - Alpha',

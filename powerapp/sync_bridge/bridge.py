@@ -154,6 +154,11 @@ class SyncAdapter(object):
         self.bridge = bridge
 
     @property
+    def user(self):
+        """:rtype: powerapp.core.models.User"""
+        return self.bridge.integration.user
+
+    @property
     def api(self):
         """:rtype: powerapp.core.sync.StatelessTodoistAPI"""
         return self.bridge.integration.api
