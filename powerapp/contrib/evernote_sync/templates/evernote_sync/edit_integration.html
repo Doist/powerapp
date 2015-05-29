@@ -1,0 +1,22 @@
+{% extends "edit_integration_base.html" %}
+{% block form %}
+    {% csrf_token %}
+
+    <div class="row">
+        <div class="input-field col s12">
+            {{ form.name }}
+            {{ form.name.label_tag }}
+            {% if form.name.errors %}<div class="red-text">{{ form.name.errors }}</div>{% endif %}
+
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col s12">
+            <label>Evernote Notebooks to Synchronize</label>
+            {{ form.evernote_notebooks }}
+            {% if form.evernote_notebooks.errors %}<div class="red-text">{{ form.evernote_notebooks.errors }}</div>{% endif %}
+        </div>
+    </div>
+
+{% endblock %}
