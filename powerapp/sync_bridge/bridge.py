@@ -15,6 +15,10 @@ from .models import ItemMapping
 logger = getLogger(__name__)
 
 
+TASK_FIELDS = ['checked', 'content', 'date_string', 'due_date', 'in_history',
+               'indent', 'item_order', 'priority', 'tags']
+
+
 class SyncBridge(object):
     """
     Every bridge has two adapters: "left" and "right".
@@ -44,20 +48,22 @@ class SyncBridge(object):
         """
         source, target, source_side, target_side = self.find_direction(source)
 
-        task_hash = get_hash(task)
-        logger.debug('push task %s (%s) %s -> %s', task_id, task_hash,
-                     source, target)
+        source_hash = get_hash(task, source.ESSENTIAL_FIELDS)
+        target_hash = get_hash(task, target.ESSENTIAL_FIELDS)
 
+        logger.debug('push task %s (%s) %s -> %s', task_id, source_hash,
+                     source, target)
+        logger.debug('... %s', task)
         # find the mapping
         kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
         try:
             mapping = ItemMapping.objects.bridge_get(self, **kw)
         except ItemMapping.DoesNotExist:
-            mapping = ItemMapping.objects.bridge_create(self,
-                                                        item_hash='!',
-                                                        **kw)
+            mapping = ItemMapping.objects.bridge_create(self, **kw)
 
-        if mapping.item_hash == task_hash:
+        mapping_source_hash = getattr(mapping, '%s_hash' % source_side)
+        mapping_target_hash = getattr(mapping, '%s_hash' % target_side)
+        if mapping_source_hash == source_hash or mapping_target_hash == target_hash:
             logger.debug('... hashes match, skip')
             return
 
@@ -70,8 +76,9 @@ class SyncBridge(object):
 
         # save the updated version of the id
         setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
-        # save the hash
-        mapping.item_hash = task_hash
+        # save hashes
+        setattr(mapping, '%s_hash' % source_side, source_hash)
+        setattr(mapping, '%s_hash' % target_side, target_hash)
         mapping.save()
 
     def delete_task(self, source, task_id):
@@ -123,6 +130,7 @@ class SyncAdapter(object):
     Abstract `bridge adapter` accepting and executing commands
     """
     DEFAULT_NAME = 'default'
+    ESSENTIAL_FIELDS = TASK_FIELDS
 
     def __init__(self, name=None):
         self.name = name or self.DEFAULT_NAME
@@ -161,8 +169,6 @@ class SyncAdapter(object):
 # around. Actually, it's based on a copy-paste of a Todoist task, bit in
 # your integration you don't always have to use all these fields. Just use
 # ones that make sense for your particular case
-TASK_FIELDS = ['checked', 'content', 'date_string', 'due_date', 'in_history',
-               'indent', 'item_order', 'priority', 'tags']
 
 Task = namedtuple('Task', TASK_FIELDS)
 
@@ -189,9 +195,9 @@ def task(checked=False, content='', date_string=None, due_date=None,
                 indent, item_order, priority, tags)
 
 
-def get_hash(obj):
-    str_obj = json.dumps(obj, separators=',:', sort_keys=True,
-                         default=json_default)
+def get_hash(obj, essential_fields):
+    subset = {k: v for k, v in obj._asdict().items() if k in essential_fields}
+    str_obj = json.dumps(subset, separators=',:', sort_keys=True, default=json_default)
     return hashlib.sha256(force_bytes(str_obj)).hexdigest()
 
 

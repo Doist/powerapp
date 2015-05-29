@@ -33,8 +33,10 @@ class ItemMapping(models.Model):
 
     # item requisites
     left_id = models.CharField(u'"Left system" item id', max_length=512, null=True)
+    left_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
+
     right_id = models.CharField(u'"Right system" item id', max_length=512, null=True)
-    item_hash = models.CharField(u'Last seen hash of the item', max_length=64)
+    right_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
 
     class Meta:
         index_together = [

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 import uuid
-from powerapp.sync_bridge.bridge import SyncBridge, SyncAdapter, task, get_hash
+from powerapp.sync_bridge.bridge import SyncBridge, SyncAdapter, task, get_hash, \
+    TASK_FIELDS
 from powerapp.sync_bridge.models import ItemMapping
 
 
@@ -9,6 +10,7 @@ class SampleAdapter(SyncAdapter):
     """
     A adapter for testing purposes.
     """
+    DEFAULT_NAME = 'sample'
 
     def __init__(self, name=None):
         super(SampleAdapter, self).__init__(name)
@@ -27,6 +29,11 @@ class SampleAdapter(SyncAdapter):
         return uuid.uuid4().hex
 
 
+class DumbSampleAdapter(SampleAdapter):
+    ESSENTIAL_FIELDS = ['content']
+    DEFAULT_NAME = 'dumb'
+
+
 @pytest.fixture
 def td():
     return SampleAdapter('todoist')
@@ -36,8 +43,17 @@ def gh():
     return SampleAdapter('github')
 
 @pytest.fixture
+def dumb():
+    return DumbSampleAdapter()
+
+@pytest.fixture
 def bridge(detached_integration, td, gh):
     return SyncBridge(detached_integration, td, gh)
+
+@pytest.fixture
+def dumb_bridge(detached_integration, td, dumb):
+    return SyncBridge(detached_integration, td, dumb)
+
 
 def test_bridge_has_name(bridge):
     assert bridge.name == 'todoist-github'
@@ -57,11 +73,12 @@ def test_adapter_cant_change_its_bridge(detached_integration):
 
 
 def test_task_hashes():
+    essential_fields = ['content', 'tags']
     t1 = task(content='A')
     t2 = task(content='B', tags=None)
     t3 = task(content='B', tags=[])
-    assert get_hash(t1) != get_hash(t2)
-    assert get_hash(t2) == get_hash(t3)
+    assert get_hash(t1, essential_fields) != get_hash(t2, essential_fields)
+    assert get_hash(t2, essential_fields) == get_hash(t3, essential_fields)
 
 
 def test_bridge_passes_tasks_through(td, gh, bridge):
@@ -71,7 +88,7 @@ def test_bridge_passes_tasks_through(td, gh, bridge):
 
     # check how id mapping works
     mapping = ItemMapping.objects.bridge_get(bridge, left_id=1)
-    assert mapping.item_hash == get_hash(foo)
+    assert mapping.left_hash == get_hash(foo, essential_fields=TASK_FIELDS)
     assert mapping.left_id == '1'
     assert gh.storage[mapping.right_id] == foo
 
@@ -100,3 +117,16 @@ def test_bridge_updates_tasks(td, gh, bridge):
     gh_id = ItemMapping.objects.bridge_get(bridge, left_id=1).right_id
     obj = gh.storage[gh_id]
     assert obj.content == 'bar'
+
+
+def test_get_hash_essential_fields():
+    id2 = task(content='foo', indent=2)
+    id3 = task(content='foo', indent=3)
+    assert get_hash(id2, essential_fields=['content']) == get_hash(id3, essential_fields=['content'])
+    assert get_hash(id2, essential_fields=['content', 'indent']) != get_hash(id3, essential_fields=['content', 'indent'])
+
+
+def test_essential_fields(td, dumb, dumb_bridge):
+    dumb_bridge.push_task(td, 1, task(content='foo', indent=2))
+    mapping = ItemMapping.objects.bridge_get(dumb_bridge, left_id=1)
+    assert mapping.left_hash != mapping.right_hash
