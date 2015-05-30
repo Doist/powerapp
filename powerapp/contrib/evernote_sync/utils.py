@@ -13,15 +13,25 @@ from .models import EvernoteCache
 
 
 # See https://sandbox.evernote.com/api/DeveloperToken.action
-DEVELOPER_TOKEN = 'S=s1:U=90e9d:E=154f7120952:C=14d9f60dd38:P=1cd:A=en-devtoken:V=2:H=c427b7991dfe7210652a47d3bd75ff0a'
+from powerapp.core.models.oauth import AccessToken
+
+
 UPDATE_THRESHOLD = datetime.timedelta(seconds=30) if settings.DEBUG else datetime.timedelta(minutes=15)
+ACCESS_TOKEN_CLIENT = 'evernote_sync'
+
+
+def get_unauthorized_evernote_client():
+    return EvernoteClient(sandbox=settings.EVERNOTE_SANDBOX,
+                          consumer_key=settings.EVERNOTE_CONSUMER_KEY,
+                          consumer_secret=settings.EVERNOTE_CONSUMER_SECRET)
 
 
 def get_evernote_client(user):
     """
     Return the authenticated version of the Evernote client
     """
-    return EvernoteClient(token=DEVELOPER_TOKEN, sandbox=True)
+    access_token = AccessToken.objects.get(user=user, client=ACCESS_TOKEN_CLIENT)
+    return EvernoteClient(token=access_token.token, sandbox=settings.EVERNOTE_SANDBOX)
 
 
 def get_notebooks(user):
