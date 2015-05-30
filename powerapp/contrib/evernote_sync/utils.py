@@ -5,18 +5,22 @@ Evernote utility functions
 import datetime
 from evernote.api.client import EvernoteClient
 from django.conf import settings
-from django.utils.timezone import now
+from django.dispatch import Signal
 from django.utils.html import escape
-
-
-from .models import EvernoteCache
-
-
-# See https://sandbox.evernote.com/api/DeveloperToken.action
+from evernote.edam.notestore.ttypes import SyncChunkFilter
+from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
+    EvernoteNotebookCache
 from powerapp.core.models.oauth import AccessToken
 
 
-UPDATE_THRESHOLD = datetime.timedelta(seconds=30) if settings.DEBUG else datetime.timedelta(minutes=15)
+# notebook_changed, notebook_deleted signals aren't used yet
+evernote_notebook_changed = Signal(providing_args=['user', 'notebook'])
+evernote_notebook_deleted = Signal(providing_args=['user', 'guid'])
+
+evernote_note_changed = Signal(providing_args=['user', 'note'])
+evernote_note_deleted = Signal(providing_args=['user', 'guid'])
+
+
 ACCESS_TOKEN_CLIENT = 'evernote_sync'
 
 
@@ -38,40 +42,70 @@ def get_notebooks(user):
     """
     Returns the list of notebooks.
     """
-    cache = get_evernote_cache(user)
-    refresh_evernote_cache(user, cache)
+    cache = get_evernote_notebook_cache(user)
+    cache.refresh()
     return cache.notebooks
 
 
-def get_evernote_cache(user):
-    obj, created = EvernoteCache.objects.get_or_create(user=user)
+def get_evernote_notebook_cache(user):
+    obj, created = EvernoteNotebookCache.objects.get_or_create(user=user)
     return obj
 
-
-def refresh_evernote_cache(user, cache):
-    """
-    Refresh the evernote cache if required
-    """
-    if cache.last_update_time > now() - UPDATE_THRESHOLD:
-        # no need to update yet
-        return
-
-    # let's see if there are some updates
-    client = get_evernote_client(user)
-    note_store = client.get_note_store()
-    update_count = note_store.getSyncState().updateCount
-    if update_count <= cache.last_update_count:
-        cache.last_update_time = now()
-        cache.save()
-        return
-
-    # it's time for update
-    cache.notebooks = note_store.listNotebooks()
-    cache.last_update_time = now()
-    cache.last_update_count = update_count
-    cache.save()
 
 def format_note_content(content):
     return """<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
     <en-note>%s</en-note>
     """ % escape(content)
+
+
+def sync_evernote(integration):
+    client = get_evernote_client(integration.user)
+    note_store = client.get_note_store()
+
+    sync_state = note_store.getSyncState()
+    local_sync_state, _ = EvernoteSyncState.objects.get_or_create(integration=integration)
+
+    # nothing to update?
+    if local_sync_state.last_update_count == sync_state.updateCount:
+        return
+
+    # do we need a full sync?
+    if sync_state.fullSyncBefore > local_sync_state.last_sync_time:
+        local_sync_state.last_update_count = 0
+
+    max_entries = 1000
+
+    sync_filter = SyncChunkFilter()
+    sync_filter.includeNotes = True
+    sync_filter.includeNoteAttributes = True
+    sync_filter.includeNotebooks = True
+    sync_filter.includeExpunged = True
+
+    while True:
+        chunk = note_store.getFilteredSyncChunk(local_sync_state.last_update_count, max_entries, sync_filter)
+
+        if chunk.notebooks:
+            for notebook in chunk.notebooks:
+                evernote_notebook_changed.send(None, integration=integration, notebook=notebook)
+
+        if chunk.expungedNotebooks:
+            for guid in chunk.expungedNotebooks:
+                evernote_notebook_deleted.send(None, integration=integration, guid=guid)
+
+        if chunk.notes:
+            for note in chunk.notes:
+                if note.deleted is not None:
+                    evernote_note_deleted.send(None, integration=integration, guid=note.guid)
+                else:
+                    evernote_note_changed.send(None, integration=integration, note=note)
+
+        if chunk.expungedNotes:
+            for guid in chunk.expungedNotes:
+                evernote_note_deleted.send(None, integration=integration, guid=guid)
+
+        local_sync_state.last_update_count = chunk.chunkHighUSN
+        local_sync_state.last_sync_time = chunk.currentTime
+
+        if chunk.chunkHighUSN == chunk.updateCount:
+            local_sync_state.save()
+            return

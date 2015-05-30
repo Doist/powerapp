@@ -82,31 +82,39 @@ def handle_stateless_integratoins(data):
 
     # 3. Handle events one by one
     for ev in data:
-        signal_name = webhook_to_django_signal(ev['event_name'])
-        obj = ev['event_data']
+        signal_name, event_data = webhook_to_django_signal(ev)
         if not signal_name:
             continue
         user_id = ev['user_id']
         for integration in user_integrations.get(user_id, []):
             signal = integration.app_config.signals[signal_name]
-            signal.fire(integration, obj)
+            signal.fire(integration, event_data)
 
 
-def webhook_to_django_signal(event_name):
+def webhook_to_django_signal(event):
     """
     Convert webhook name to django signal name. If None is returned, then
     there's no Django signal corresponding to an incoming event.
     """
+    event_name = event['event_name']
+    event_data = event['event_data']
     try:
         obj, action = event_name.split(':', 1)
     except IndexError:
-        return None
+        return None, None
     # item -> task
     obj = obj if obj != 'item' else 'task'
 
+    # Todoist server-side bug workaround
+    if action == 'uncompleted':
+        event_data.update({'checked': False, 'in_history': False})
+
+    # We only support added, deleted and updated events
     if action not in ('added', 'deleted'):
         action = 'updated'
 
     full_name = 'todoist_%s_%s' % (obj, action)
     if hasattr(ServiceAppSignals(), full_name):
-        return full_name
+        return full_name, event_data
+
+    return None, None

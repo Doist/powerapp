@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
+import re
 import time
 from evernote.edam.error.ttypes import EDAMNotFoundException
 import evernote.edam.type.ttypes as Types
-from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge
+from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
+from powerapp.sync_bridge.models import ItemMapping
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 from . import utils
+
+
+REMINDER_BASE_TIME = 946684800   # millenium
 
 
 def build_bridge(integration, project_id, notebook_guid):
@@ -13,7 +18,26 @@ def build_bridge(integration, project_id, notebook_guid):
     return SyncBridge(integration, td, ev)
 
 
-REMINDER_BASE_TIME = 946684800   # millenium
+def get_bridge_by_guid(integration, guid):
+    """
+    Return SyncBridge instance (or None) by task GUID
+
+    We need this function, because there is no way to identify the notebook
+    guid by item id, and so we're forced to use this dirty workaround
+
+    Note that here we rely on the fact that the bridge has a predictable
+    structure (todoist <--> evernote) and sides of the bridge have predictable
+    names containing id of the project and the guid of the notebook coresondingly
+    """
+    try:
+        mapping = ItemMapping.objects.get(right_id=guid, integration=integration)
+    except ItemMapping.DoesNotExist:
+        return None
+    match = re.compile(r'^todoist-(\d+)-evernote-(.*)$').match(mapping.bridge_name)
+    if not match:
+        return None
+
+    return build_bridge(integration, match.group(1), match.group(2))
 
 
 class EvernoteSyncAdapter(SyncAdapter):
@@ -26,9 +50,8 @@ class EvernoteSyncAdapter(SyncAdapter):
     DEFAULT_NAME = 'evernote'
     ESSENTIAL_FIELDS = ['content', 'item_order', 'checked']
 
-    def __init__(self, notebook_guid, name=None):
-        if name is None:
-            name = '%s-%s' % (self.DEFAULT_NAME, notebook_guid)
+    def __init__(self, notebook_guid):
+        name = '%s-%s' % (self.DEFAULT_NAME, notebook_guid)
         super(EvernoteSyncAdapter, self).__init__(name=name)
         self.notebook_guid = notebook_guid
 
@@ -56,6 +79,8 @@ class EvernoteSyncAdapter(SyncAdapter):
         note.attributes.reminderOrder = REMINDER_BASE_TIME - task.item_order
         if task.checked:
             note.attributes.reminderDoneTime = int(time.time())
+        else:
+            note.attributes.reminderDoneTime = None
 
         if create:
             note = note_store.createNote(note)
@@ -71,3 +96,20 @@ class EvernoteSyncAdapter(SyncAdapter):
             note_store.deleteNote(task_id)
         except EDAMNotFoundException:
             pass
+
+
+def task_from_evernote(note):
+    """
+    Take an evernote Note and return a new generic task.
+
+    If evernote note doesn't have to be synchronized with Todoist, return
+    None
+    """
+    if not note.attributes.reminderOrder:
+        return None
+
+    item_order = REMINDER_BASE_TIME - note.attributes.reminderOrder
+    if item_order < 1:
+        item_order = 1
+    return task(checked=note.attributes.reminderDoneTime is not None,
+                content=note.title, item_order=item_order)

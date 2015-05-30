@@ -3,8 +3,8 @@ import datetime
 from logging import getLogger
 from django.dispatch.dispatcher import receiver
 from .apps import AppConfig
-from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
-from powerapp.contrib.evernote_sync.sync_adapter import EvernoteSyncAdapter
+from powerapp.contrib.evernote_sync.sync_adapter import EvernoteSyncAdapter, \
+    get_bridge_by_guid, task_from_evernote, build_bridge
 from powerapp.sync_bridge.bridge import SyncBridge
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter, \
     task_from_todoist
@@ -44,16 +44,27 @@ def on_task_deleted(sender, user=None, service=None, integration=None, obj=None,
 
 @AppConfig.periodic_task(datetime.timedelta(minutes=1))
 def minute_counter(integration, user):
-    # TODO: polling and sync
+    utils.sync_evernote(integration)
 
-    # See
-    # https://dev.evernote.com/doc/articles/search.php
-    # https://dev.evernote.com/doc/articles/polling_notification.php
-    # https://dev.evernote.com/doc/articles/search_grammar.php
-    # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_findNotesMetadata
-    filt = NoteFilter(words="any: created:20150529T100000 updated:20150529T100000")
-    spec = NotesMetadataResultSpec()
-    client = utils.get_evernote_client(user)
-    store = client.get_note_store()
-    metadata = store.findNotesMetadata(filt, 0, 100, spec)
-    # ...
+
+@receiver(utils.evernote_note_changed)
+def on_note_changed(sender, integration, note, **kwargs):
+    if note.notebookGuid not in integration.settings.get('evernote_notebooks', []):
+        return
+
+    task = task_from_evernote(note)
+    if task is None:
+        return
+
+    projects_notebooks = integration.settings.get('projects_notebooks') or {}
+    notebooks_projects = {v: k for k, v in projects_notebooks.items()}
+    project_id = notebooks_projects.get(note.notebookGuid)
+    bridge = build_bridge(integration, project_id, note.notebookGuid)
+    bridge.push_task(bridge.right, note.guid, task)
+
+
+@receiver(utils.evernote_note_deleted)
+def on_note_deleted(sender, integration, guid, **kwargs):
+    bridge = get_bridge_by_guid(integration, guid)
+    if bridge:
+        bridge.delete_task(bridge.right, guid)
