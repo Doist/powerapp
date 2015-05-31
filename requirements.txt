@@ -1,3 +1,5 @@
+# Py3 version of Evernote SDK has to be installed from github
+-e git+git@github.com:evernote/evernote-sdk-python3.git#egg=evernote-dev
 # Heroku requirements file
 uWSGI
 psycopg2

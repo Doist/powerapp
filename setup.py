@@ -1,5 +1,8 @@
 #!/usr/bin/env python
+import sys
 from setuptools import setup, find_packages
+
+PY3 = sys.version_info.major == 3
 
 
 def read(filename):
@@ -7,6 +10,23 @@ def read(filename):
         return open(filename).read()
     except IOError:
         pass
+
+
+install_requires = [
+  'todoist-python',
+  'Django>=1.8',
+  'django-environ',
+  'django-picklefield',
+  'colorlog',
+  'requests',
+  'feedparser'
+]
+
+
+# We cannot install evernote on Python3, because the version supporting it
+# is not on PyPI yet. Use the requirement from requirements.txt to set it up
+if not PY3:
+    install_requires.append('evernote')
 
 
 setup(name='powerapp',
@@ -17,14 +37,7 @@ setup(name='powerapp',
       description='The app to integrate Todoist with third-party service',
       long_description=read('README.rst'),
       packages=find_packages(),
-      install_requires=[
-          'todoist-python',
-          'Django>=1.8',
-          'django-environ',
-          'django-picklefield',
-          'colorlog',
-          'requests',
-          'feedparser'],
+      install_requires=install_requires,
       entry_points={},
       classifiers=[
           'Development Status :: 3 - Alpha',
