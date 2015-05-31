@@ -29,10 +29,10 @@ def get_bridge_by_guid(integration, guid):
     structure (todoist <--> evernote) and sides of the bridge have predictable
     names containing id of the project and the guid of the notebook coresondingly
     """
-    try:
-        mapping = ItemMapping.objects.get(right_id=guid, integration=integration)
-    except ItemMapping.DoesNotExist:
+    mapping = ItemMapping.objects.filter(right_id=guid, integration=integration).order_by('-id').first()
+    if not mapping:
         return None
+
     match = re.compile(r'^todoist-(\d+)-evernote-(.*)$').match(mapping.bridge_name)
     if not match:
         return None
@@ -93,9 +93,13 @@ class EvernoteSyncAdapter(SyncAdapter):
         client = utils.get_evernote_client(self.user)
         note_store = client.get_note_store()
         try:
-            note_store.deleteNote(task_id)
+            note = note_store.getNote(task_id, True, True, False, False)
         except EDAMNotFoundException:
-            pass
+            return
+        note.attributes.reminderTime = None
+        note.attributes.reminderOrder = None
+        note.attributes.reminderDoneTime = None
+        note_store.updateNote(note)
 
 
 def task_from_evernote(user, note):

@@ -54,6 +54,17 @@ class IntegrationForm(django_forms.IntegrationForm):
 
     def pre_save(self, integration_settings):
         """
+        Perform "pre-save integration" actions
+        """
+        self.create_todoist_projects(integration_settings)
+        self.sync_new_notebooks_pre_save(integration_settings)
+        return integration_settings
+
+    def post_save(self):
+        self.sync_new_notebooks_post_save()
+
+    def create_todoist_projects(self, integration_settings):
+        """
         Create Todoist projects and map them to evernote notebooks
         """
         # a dict: project_id -> notebook guid
@@ -88,6 +99,24 @@ class IntegrationForm(django_forms.IntegrationForm):
         integration_settings['projects_notebooks'] = projects_notebooks
         return integration_settings
 
+    def sync_new_notebooks_pre_save(self, integration_settings):
+        """
+        If integration is not new, and user adds some new notebooks to their
+        watchlist, we have to perform the initial synchronization for them and
+        their corresponding Todoist projects.
+        """
+        self._new_notebook_guids = set()
+        if self.integration.id is None:
+            # skip new integrations, we'll be synchronized shortly afterwards
+            return
 
+        old_guids = self.integration.settings.get('evernote_notebooks', [])
+        new_guids = integration_settings.get('evernote_notebooks', [])
+        self._new_notebook_guids = set(new_guids) - set(old_guids)
+
+    def sync_new_notebooks_post_save(self):
+        if self._new_notebook_guids:
+            utils.sync_evernote_projects(self.integration,
+                                         self._new_notebook_guids)
 
 

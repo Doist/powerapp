@@ -65,4 +65,5 @@ class IntegrationForm(forms.Form):
         self.integration.name = integration_settings.pop('name')
         self.integration.settings = integration_settings
         self.integration.save()
+        self.post_save()
         return self.integration

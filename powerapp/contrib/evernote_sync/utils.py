@@ -11,11 +11,6 @@ from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
 from powerapp.core.models.oauth import AccessToken
 
-
-# notebook_changed, notebook_deleted signals aren't used yet
-evernote_notebook_changed = Signal(providing_args=['user', 'notebook'])
-evernote_notebook_deleted = Signal(providing_args=['user', 'guid'])
-
 evernote_note_changed = Signal(providing_args=['user', 'note'])
 evernote_note_deleted = Signal(providing_args=['user', 'guid'])
 
@@ -82,19 +77,56 @@ def format_note_content(content):
 
 
 def sync_evernote(integration):
-    client = get_evernote_client(integration.user)
-    note_store = client.get_note_store()
+    """
+    Sync evernote project with Todoist
 
-    sync_state = note_store.getSyncState()
+    The function asks for new changes in Evernote account and generates
+    `evernote_note_changed` and `evernote_note_deleted` events (handled in
+    signals.py). It keeps the "last sync" state in the EvernoteSyncState object
+    """
     local_sync_state, _ = EvernoteSyncState.objects.get_or_create(integration=integration)
 
+    last_update_count, last_sync_time = _do_sync(integration,
+                                                 local_sync_state.last_update_count,
+                                                 local_sync_state.last_sync_time)
+
+    local_sync_state.last_update_count = last_update_count
+    local_sync_state.last_sync_time = last_sync_time
+    local_sync_state.save()
+
+
+def sync_evernote_projects(integration, notebook_guids):
+    """
+    Sync evernote projects by guids. The function is called whenever a user
+    new projects to synchronization.
+
+    We perform the synchronization "from scratch" and never save the updated
+    value for last_update_count and last_sync_time
+    """
+    _do_sync(integration, 0, 0, notebook_guids)
+
+
+def _do_sync(integration, last_update_count, last_sync_time, notebook_guids=None):
+    """
+    Low-level funtion performing sync operations. If notebook_guids is not None,
+    launch note_add events only for notebooks with given guids
+
+    Returns new values for last_update_count and last_sync_time
+    """
+    client = get_evernote_client(integration.user)
+    note_store = client.get_note_store()
+    sync_state = note_store.getSyncState()
+
+    if notebook_guids is not None:
+        notebook_guids = set(notebook_guids)
+
     # nothing to update?
-    if local_sync_state.last_update_count == sync_state.updateCount:
-        return
+    if last_update_count == sync_state.updateCount:
+        return last_update_count, last_sync_time
 
     # do we need a full sync?
-    if sync_state.fullSyncBefore > local_sync_state.last_sync_time:
-        local_sync_state.last_update_count = 0
+    if sync_state.fullSyncBefore > last_sync_time:
+        last_update_count = 0
 
     max_entries = 1000
 
@@ -105,30 +137,22 @@ def sync_evernote(integration):
     sync_filter.includeExpunged = True
 
     while True:
-        chunk = note_store.getFilteredSyncChunk(local_sync_state.last_update_count, max_entries, sync_filter)
+        chunk = note_store.getFilteredSyncChunk(last_update_count,
+                                                max_entries,
+                                                sync_filter)
 
-        if chunk.notebooks:
-            for notebook in chunk.notebooks:
-                evernote_notebook_changed.send(None, integration=integration, notebook=notebook)
-
-        if chunk.expungedNotebooks:
-            for guid in chunk.expungedNotebooks:
-                evernote_notebook_deleted.send(None, integration=integration, guid=guid)
-
-        if chunk.notes:
-            for note in chunk.notes:
+        for note in (chunk.notes or []):
+            if notebook_guids is None or note.notebookGuid in notebook_guids:
                 if note.deleted is not None:
                     evernote_note_deleted.send(None, integration=integration, guid=note.guid)
                 else:
                     evernote_note_changed.send(None, integration=integration, note=note)
 
-        if chunk.expungedNotes:
-            for guid in chunk.expungedNotes:
-                evernote_note_deleted.send(None, integration=integration, guid=guid)
+        for guid in (chunk.expungedNotes or []):
+            evernote_note_deleted.send(None, integration=integration, guid=guid)
 
-        local_sync_state.last_update_count = chunk.chunkHighUSN
-        local_sync_state.last_sync_time = chunk.currentTime
+        last_update_count = chunk.chunkHighUSN
+        last_sync_time = chunk.currentTime
 
         if chunk.chunkHighUSN == chunk.updateCount:
-            local_sync_state.save()
-            return
+            return last_update_count, last_sync_time
