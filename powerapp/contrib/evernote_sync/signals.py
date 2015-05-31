@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 from logging import getLogger
+from django.conf import settings
 from django.dispatch.dispatcher import receiver
 from .apps import AppConfig
 from powerapp.contrib.evernote_sync.sync_adapter import EvernoteSyncAdapter, \
@@ -41,12 +42,6 @@ def on_task_deleted(sender, user=None, service=None, integration=None, obj=None,
     bridge.delete_task(td, obj['id'])
 
 
-
-@AppConfig.periodic_task(datetime.timedelta(minutes=1))
-def minute_counter(integration, user):
-    utils.sync_evernote(integration)
-
-
 @receiver(utils.evernote_note_changed)
 def on_note_changed(sender, integration, note, **kwargs):
     if note.notebookGuid not in integration.settings.get('evernote_notebooks', []):
@@ -68,3 +63,8 @@ def on_note_deleted(sender, integration, guid, **kwargs):
     bridge = get_bridge_by_guid(integration, guid)
     if bridge:
         bridge.delete_task(bridge.right, guid)
+
+
+@AppConfig.periodic_task(datetime.timedelta(minutes=1 if settings.DEBUG else 15))
+def sync_evernote(integration):
+    utils.sync_evernote(integration)
