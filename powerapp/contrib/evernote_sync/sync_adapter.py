@@ -70,7 +70,7 @@ class EvernoteSyncAdapter(SyncAdapter):
             note = Types.Note()
             create = True
 
-        note.title = task.content
+        note.title = plaintext_content(task.content)
         if create:
             note.content = utils.format_note_content('')
         note.notebookGuid = self.notebook_guid
@@ -116,3 +116,14 @@ def task_from_evernote(user, note):
         item_order = 1
     return task(checked=note.attributes.reminderDoneTime is not None,
                 content=content, item_order=item_order)
+
+def plaintext_content(content):
+    """
+    Get rid of note_url (it's added by `task_from_evernote`) and keep just the
+    plain content of the note
+    """
+    match = re.compile(r'^https?://\S*evernote.com.*?\((.*)\)$').match(content)
+    if match:
+        return match.group(1)
+    else:
+        return content
