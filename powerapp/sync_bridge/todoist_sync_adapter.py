@@ -36,7 +36,7 @@ class TodoistSyncAdapter(SyncAdapter):
             kwargs.update(due_date=task.due_date, date_string=task.date_string)
 
         if task_id:
-            self.api.items.update(task_id, **kwargs)
+            self.api.items.update(task_id, content=content, **kwargs)
             return_or_raise(self.api.commit())
             return task_id
 

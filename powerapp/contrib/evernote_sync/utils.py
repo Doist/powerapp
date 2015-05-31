@@ -2,14 +2,13 @@
 """
 Evernote utility functions
 """
-import datetime
 from evernote.api.client import EvernoteClient
 from django.conf import settings
 from django.dispatch import Signal
 from django.utils.html import escape
 from evernote.edam.notestore.ttypes import SyncChunkFilter
 from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
-    EvernoteNotebookCache
+    EvernoteAccountCache
 from powerapp.core.models.oauth import AccessToken
 
 
@@ -42,13 +41,37 @@ def get_notebooks(user):
     """
     Returns the list of notebooks.
     """
-    cache = get_evernote_notebook_cache(user)
+    cache = get_evernote_account_cache(user)
     cache.refresh()
     return cache.notebooks
 
 
-def get_evernote_notebook_cache(user):
-    obj, created = EvernoteNotebookCache.objects.get_or_create(user=user)
+def get_note_url(user, guid):
+    """
+    Return evernote note URL by its guid
+
+    The URL is constructed according to
+    https://dev.evernote.com/doc/articles/note_links.php:
+
+    https://[service]/shard/[shardId]/nl/[userId]/[noteGuid]/
+    """
+    client = get_evernote_client(user)
+    account_cache = get_evernote_account_cache(user)
+    account_cache.refresh()
+
+    return 'https://%s/shard/%s/nl/%s/%s/' % (
+        client.service_host,
+        account_cache.user_data.shardId,
+        account_cache.user_data.id,
+        guid,
+    )
+
+
+def get_evernote_account_cache(user):
+    """
+    Get or create the evernote account cache
+    """
+    obj, created = EvernoteAccountCache.objects.get_or_create(user=user)
     return obj
 
 

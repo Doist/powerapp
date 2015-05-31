@@ -6,9 +6,12 @@ from django.utils.timezone import make_aware, now
 from picklefield.fields import PickledObjectField
 
 
-class EvernoteNotebookCache(models.Model):
+class EvernoteAccountCache(models.Model):
     """
-    Notebook cache, common for all integrations of the same user
+    Account cache, common for all integrations of the same user
+
+    Contains the information about the user itself (to build correct links)
+    and about their notebooks
     """
     UPDATE_THRESHOLD = datetime.timedelta(seconds=30) if settings.DEBUG else datetime.timedelta(minutes=15)
     MILLENIUM = make_aware(datetime.datetime(2000, 1, 1))
@@ -16,6 +19,7 @@ class EvernoteNotebookCache(models.Model):
     user = models.OneToOneField('core.User')
     last_update_count = models.IntegerField(default=0)
     last_update_time = models.DateTimeField(default=MILLENIUM)
+    user_data = PickledObjectField(null=True)
     notebooks = PickledObjectField(null=True)
 
     def refresh(self):
@@ -27,9 +31,12 @@ class EvernoteNotebookCache(models.Model):
             # no need to update yet
             return
 
-        # let's see if there are some updates
         client = get_evernote_client(self.user)
 
+        # update user_data
+        self.user_data = client.get_user_store().getUser()
+
+        # let's see if there are some updates in the note store
         note_store = client.get_note_store()
         update_count = note_store.getSyncState().updateCount
         if update_count <= self.last_update_count:

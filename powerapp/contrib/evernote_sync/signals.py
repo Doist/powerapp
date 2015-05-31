@@ -52,7 +52,7 @@ def on_note_changed(sender, integration, note, **kwargs):
     if note.notebookGuid not in integration.settings.get('evernote_notebooks', []):
         return
 
-    task = task_from_evernote(note)
+    task = task_from_evernote(integration.user, note)
     if task is None:
         return
 

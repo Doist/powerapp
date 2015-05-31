@@ -98,7 +98,7 @@ class EvernoteSyncAdapter(SyncAdapter):
             pass
 
 
-def task_from_evernote(note):
+def task_from_evernote(user, note):
     """
     Take an evernote Note and return a new generic task.
 
@@ -108,8 +108,11 @@ def task_from_evernote(note):
     if not note.attributes.reminderOrder:
         return None
 
+    note_url = utils.get_note_url(user, note.guid)
+    content = '%s (%s)' % (note_url, note.title)
+
     item_order = REMINDER_BASE_TIME - note.attributes.reminderOrder
     if item_order < 1:
         item_order = 1
     return task(checked=note.attributes.reminderDoneTime is not None,
-                content=note.title, item_order=item_order)
+                content=content, item_order=item_order)
