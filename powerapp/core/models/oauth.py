@@ -44,7 +44,7 @@ class AbstractOAuthToken(models.Model):
         we internally keep the scope under the "__all__" name.
         """
         if scope is None:
-            scope = 'all'
+            scope = EMPTY_SCOPE
 
         ret = []
         scope = scope.strip() or EMPTY_SCOPE

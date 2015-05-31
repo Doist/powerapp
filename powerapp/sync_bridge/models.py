@@ -32,10 +32,10 @@ class ItemMapping(models.Model):
     bridge_name = models.CharField(max_length=512)
 
     # item requisites
-    left_id = models.CharField(u'"Left system" item id', max_length=512, null=True)
+    left_id = models.CharField(u'"Left system" item id', max_length=512, null=True, db_index=True)
     left_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
 
-    right_id = models.CharField(u'"Right system" item id', max_length=512, null=True)
+    right_id = models.CharField(u'"Right system" item id', max_length=512, null=True, db_index=True)
     right_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
 
     class Meta:

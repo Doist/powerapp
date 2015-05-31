@@ -10,6 +10,9 @@ def return_or_raise(result):
     Take the result of sync operation and pass it through if everything is
     okay, or raise PowerAppError, if there is an error
     """
+    if result is None:
+        return result
+
     if not isinstance(result, dict):
         raise PowerAppError(result)
 

@@ -43,15 +43,27 @@ class IntegrationForm(forms.Form):
             if hasattr(field_obj, 'populate_with_user'):
                 field_obj.populate_with_user(self.user)
 
+    def pre_save(self, integration_settings):
+        """
+        pre_save is called where form data is cleaned and already valid, and the
+        integration is ready to save. It accepts integration settings,
+        optionally modifies them and returns the value
+        """
+        return integration_settings
+
     def save(self):
         if not self.integration:
             self.integration = Integration(service_id=self.service_label,
                                            user=self.user)
-        integration_settings = dict(self.cleaned_data)
+
+        # merge current integration settings with new values
+        integration_settings = dict(self.integration.settings or {},
+                                    **dict(self.cleaned_data))
+        # modify them with pre_save
+        integration_settings = self.pre_save(integration_settings)
+
         self.integration.name = integration_settings.pop('name')
-        # we intentionally don't use "self.integration.update_settings" here,
-        # because we want to save integration with its settings with one command
-        self.integration.settings = dict(self.integration.settings or {},
-                                         **integration_settings)
+        self.integration.settings = integration_settings
         self.integration.save()
+        self.post_save()
         return self.integration
