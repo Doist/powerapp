@@ -7,6 +7,8 @@
             <img src="{{ form.service.logo_url }}"
                  alt="{{ form.service.verbose_name }}">
             <br>
+            {% block extra_actions %}
+            {% endblock %}
         </div>
 
         <div class="service-description">
@@ -31,12 +33,12 @@
                 {# submit buttons #}
                 <button type="submit" class="btn" form="edit-integration">
                     <i class="mdi-action-done"></i>
-                    Save changes
+                    Save
                 </button>
                 {% if form.integration %}
                     <button type="submit" class="btn right red" form="delete-integration">
                         <i class="mdi-action-delete"></i>
-                        Delete Integration
+                        Delete
                     </button>
                 {% endif %}
 

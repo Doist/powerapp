@@ -1,4 +1,23 @@
 {% extends "edit_integration_base.html" %}
+
+{% block extra_actions %}
+    {% if form.integration %}
+    <form action="{% url "evernote_sync:sync_now" form.integration.id %}" id="sync_now" method="post">{% csrf_token %}
+    <a href="#" id="sync_now_link">sync now</a>
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(function() {
+        $("#sync_now_link").click(function() {
+            $("#sync_now").submit();
+            return false;
+        });
+    })
+</script>
+{% endblock %}
+
 {% block form %}
     {% csrf_token %}
 

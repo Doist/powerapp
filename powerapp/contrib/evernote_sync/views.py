@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.utils.html import strip_tags
+from django.views.decorators.http import require_POST
 from powerapp.core import generic_views
 from . import forms, utils
+from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import AccessToken
 
 
@@ -63,3 +66,14 @@ def authorize_evernote_done(request):
 
     AccessToken.register(request.user, utils.ACCESS_TOKEN_CLIENT, None, access_token)
     return redirect('evernote_sync:add_integration')
+
+
+@login_required
+@require_POST
+def sync_now(request, integration_id):
+    integration = get_object_or_404(Integration,
+                                    id=integration_id,
+                                    user_id=request.user.id)
+    utils.sync_evernote(integration)
+    messages.info(request, 'Synchronization performed')
+    return redirect('evernote_sync:edit_integration', integration.id)
