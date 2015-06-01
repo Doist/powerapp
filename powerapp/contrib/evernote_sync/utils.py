@@ -41,24 +41,19 @@ def get_notebooks(user):
     return cache.notebooks
 
 
-def get_note_url(user, guid):
+def get_note_url(user, note):
     """
     Return evernote note URL by its guid
 
-    The URL is constructed according to
-    https://dev.evernote.com/doc/articles/note_links.php:
-
-    https://[service]/shard/[shardId]/nl/[userId]/[noteGuid]/
+    The URL can be constructed according to
+    https://dev.evernote.com/doc/articles/note_links.php, like
+    https://[service]/shard/[shardId]/nl/[userId]/[noteGuid]/ , but we prefer
+    to have more user-friendly URLs like
+    https://[service]/Home.action?#b=[notebookGuid]&st=p&n=[noteGuid]
     """
     client = get_evernote_client(user)
-    account_cache = get_evernote_account_cache(user)
-    account_cache.refresh()
-
-    return 'https://%s/shard/%s/nl/%s/%s/' % (
-        client.service_host,
-        account_cache.user_data.shardId,
-        account_cache.user_data.id,
-        guid,
+    return 'https://%s/Home.action?#b=%s&st=p&n=%s' % (
+        client.service_host, note.notebookGuid, note.guid,
     )
 
 

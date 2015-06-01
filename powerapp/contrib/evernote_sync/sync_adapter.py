@@ -112,7 +112,7 @@ def task_from_evernote(user, note):
     if not note.attributes.reminderOrder:
         return None
 
-    note_url = utils.get_note_url(user, note.guid)
+    note_url = utils.get_note_url(user, note)
     content = '%s (%s)' % (note_url, note.title)
 
     item_order = REMINDER_BASE_TIME - note.attributes.reminderOrder
