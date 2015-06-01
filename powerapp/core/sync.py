@@ -83,6 +83,28 @@ class StatelessTodoistAPI(TodoistAPI):
         kwargs.pop('resource_types', None)
         return super(StatelessTodoistAPI, self).sync(commands, **kwargs)
 
+    def item_update(self, item_id, **kwargs):
+        """ stateless "update item" """
+        args = {'id': item_id}
+        args.update(kwargs)
+        cmd = {
+            'type': 'item_update',
+            'uuid': self.generate_uuid(),
+            'args': args,
+        }
+        self.queue.append(cmd)
+
+    def item_delete(self, *item_ids):
+        """ stateless "delete items" """
+        cmd = {
+            'type': 'item_delete',
+            'uuid': self.generate_uuid(),
+            'args': {
+                'ids': item_ids
+            }
+        }
+        self.queue.append(cmd)
+
     def patch_managers(self):
         """
         Replace sync manager methods with stubs raising RuntimeError, because

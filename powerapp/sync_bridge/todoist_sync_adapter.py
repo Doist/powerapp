@@ -36,7 +36,7 @@ class TodoistSyncAdapter(SyncAdapter):
             kwargs.update(due_date=task.due_date, date_string=task.date_string)
 
         if task_id:
-            self.api.items.update(task_id, content=content, **kwargs)
+            self.api.item_update(task_id, content=content, **kwargs)
             return_or_raise(self.api.commit())
             return task_id
 
@@ -47,7 +47,7 @@ class TodoistSyncAdapter(SyncAdapter):
 
     def delete_task(self, task_id):
         with self.api.autocommit():
-            self.api.items.delete(task_id)
+            self.api.item_delete(task_id)
 
 
 def task_from_todoist(item):
