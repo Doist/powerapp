@@ -8,7 +8,6 @@ from django.utils.timezone import now
 from powerapp.core.attrdict import AttrDict
 
 
-EMPTY_SCOPE = '__all__'
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +18,6 @@ class TodoistEvent(AttrDict):
 class AbstractOAuthToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL)
     client = models.CharField('OAuth client name', max_length=128)
-    scope = models.CharField('OAuth scope', max_length=1024)
     token = models.CharField('OAuth token value', max_length=1024)
     time = models.DateTimeField('Time token added', auto_now_add=True)
 
@@ -34,29 +32,16 @@ class AbstractOAuthToken(models.Model):
         return '%s:%s' % (self.client, self.scope)
 
     @classmethod
-    def register(cls, user, client, scope, token):
+    def register(cls, user, client, token):
         """
-        Register new access token. We accept the `scope` as comma-separated
-        list of values, split it, and store every scope item as a separate
-        database record.
+        Register new access token.
 
         In addition, we don't keep duplicates, and we keep unique values for
-        (user, client, scope) tuples.
-
-        If scope is empty (some OAuth servers don't use the concept of scope)
-        we internally keep the scope under the "__all__" name.
+        (user, client) tuples.
         """
-        if scope is None:
-            scope = EMPTY_SCOPE
-
-        ret = []
-        scope = scope.strip() or EMPTY_SCOPE
-        for sc in scope.split(','):
-            obj, _ = cls.objects.update_or_create(client=client, user=user,
-                                                  scope=sc,
-                                                  defaults={'token': token})
-            ret.append(obj)
-        return ret
+        obj, _ = cls.objects.update_or_create(client=client, user=user,
+                                              defaults={'token': token})
+        return
 
 
 class AccessToken(AbstractOAuthToken):

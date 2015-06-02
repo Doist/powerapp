@@ -190,10 +190,10 @@ class OAuthClient(object):
         return json_resp.get('access_token'), json_resp.get('refresh_token')
 
     def save_access_token(self, user, access_token):
-        return AccessToken.register(user, self.name, self.scope, access_token)
+        return AccessToken.register(user, self.name, access_token)
 
     def save_refresh_token(self, user, refresh_token):
-        return RefreshToken.register(user, self.name, self.scope, refresh_token)
+        return RefreshToken.register(user, self.name, refresh_token)
 
     def check_refresh_token(self, user):
         access_token = AccessToken.get_by_client(user, self.name)

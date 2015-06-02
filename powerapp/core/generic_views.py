@@ -7,7 +7,7 @@ from django.utils.functional import cached_property
 from django.views.generic import View
 from powerapp.core.django_forms import IntegrationForm
 from powerapp.core.models.integration import Integration
-from powerapp.core.models.oauth import EMPTY_SCOPE, AccessToken
+from powerapp.core.models.oauth import AccessToken
 
 
 class LoginRequiredMixin(object):
@@ -26,13 +26,12 @@ class AccessTokenRequiredMixin(object):
     A mixin to check the user has access token
 
     To make it work, the subclass has to define access_token_client (as a
-    string), optionally access_token_scope, and access_token_redirect. The
+    string), optionally access_token_redirect. The
     dispatcher test the database first, and if there's no access token with
-    the requested client and scope, it calls the access_token_redirect()
+    the requested client, it calls the access_token_redirect()
     function.
     """
     access_token_client = None
-    access_token_scope = EMPTY_SCOPE
 
     def dispatch(self, request, *args, **kwargs):
         # shortcut: we don't need any extra verifications
@@ -40,8 +39,7 @@ class AccessTokenRequiredMixin(object):
             return super(AccessTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
 
         if not AccessToken.objects.filter(user=request.user,
-                                          client=self.access_token_client,
-                                          scope=self.access_token_scope).exists():
+                                          client=self.access_token_client).exists():
             return self.access_token_redirect(request)
         else:
             return super(AccessTokenRequiredMixin, self).dispatch(request, *args, **kwargs)

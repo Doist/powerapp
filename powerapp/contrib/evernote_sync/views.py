@@ -64,7 +64,7 @@ def authorize_evernote_done(request):
         return render(request, 'evernote_sync/authorize_evernote_done.html',
                       {'error': error})
 
-    AccessToken.register(request.user, utils.ACCESS_TOKEN_CLIENT, None, access_token)
+    AccessToken.register(request.user, utils.ACCESS_TOKEN_CLIENT, access_token)
     return redirect('evernote_sync:add_integration')
 
 
