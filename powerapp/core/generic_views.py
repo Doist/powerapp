@@ -7,7 +7,7 @@ from django.utils.functional import cached_property
 from django.views.generic import View
 from powerapp.core.django_forms import IntegrationForm
 from powerapp.core.models.integration import Integration
-from powerapp.core.models.oauth import AccessToken
+from powerapp.core.models.oauth import OAuthToken
 
 
 class LoginRequiredMixin(object):
@@ -21,7 +21,7 @@ class LoginRequiredMixin(object):
         return super(LoginRequiredMixin, self).dispatch(request, *args, **kwargs)
 
 
-class AccessTokenRequiredMixin(object):
+class OAuthTokenRequiredMixin(object):
     """
     A mixin to check the user has access token
 
@@ -36,13 +36,13 @@ class AccessTokenRequiredMixin(object):
     def dispatch(self, request, *args, **kwargs):
         # shortcut: we don't need any extra verifications
         if not self.access_token_client:
-            return super(AccessTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
+            return super(OAuthTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
 
-        if not AccessToken.objects.filter(user=request.user,
+        if not OAuthToken.objects.filter(user=request.user,
                                           client=self.access_token_client).exists():
             return self.access_token_redirect(request)
         else:
-            return super(AccessTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
+            return super(OAuthTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
 
     def access_token_redirect(self, request):
         raise NotImplementedError('Implement "access_token_redirect" function '
@@ -50,7 +50,7 @@ class AccessTokenRequiredMixin(object):
 
 
 
-class EditIntegrationView(LoginRequiredMixin, AccessTokenRequiredMixin, View):
+class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
     """
     A view to create and modify an integration. Subclasses of this view have to
     have a `form` attrubute, which has to be a subclass of the IntegrationForm,

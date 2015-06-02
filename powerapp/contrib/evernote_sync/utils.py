@@ -10,7 +10,7 @@ from django.utils.html import escape
 from evernote.edam.notestore.ttypes import SyncChunkFilter
 from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
-from powerapp.core.models.oauth import AccessToken
+from powerapp.core.models.oauth import OAuthToken
 
 evernote_note_changed = Signal(providing_args=['user', 'note'])
 evernote_note_deleted = Signal(providing_args=['user', 'guid'])
@@ -29,8 +29,8 @@ def get_evernote_client(user):
     """
     Return the authenticated version of the Evernote client
     """
-    access_token = AccessToken.objects.get(user=user, client=ACCESS_TOKEN_CLIENT)
-    return EvernoteClient(token=access_token.token, sandbox=settings.EVERNOTE_SANDBOX)
+    token = OAuthToken.objects.get(user=user, client=ACCESS_TOKEN_CLIENT)
+    return EvernoteClient(token=token.access_token, sandbox=settings.EVERNOTE_SANDBOX)
 
 
 def get_notebooks(user):

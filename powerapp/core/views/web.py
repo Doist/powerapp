@@ -48,13 +48,12 @@ def oauth2cb(request):
     try:
         client = oauth.get_client_by_state(request)
         code = request.GET['code']
-        access_token, refresh_token = client.exchange_code_for_token(request, code)
+        token = client.exchange_code_for_token(request, code)
     except PowerAppError as e:
         return render(request, 'oauth2cb.html', {'error': str(e)})
 
     client.callback_fn(client=client,
-                       access_token=access_token,
-                       refresh_token=refresh_token,
+                       token=token,
                        request=request)
 
     return redirect(client.oauth2cb_redirect_uri)

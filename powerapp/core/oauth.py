@@ -21,10 +21,11 @@ from logging import getLogger
 import requests
 from django.core.urlresolvers import reverse
 from django.conf import settings
+from requests_oauthlib import OAuth2Session
 
 from django.utils.six.moves.urllib import parse
 from powerapp.core.exceptions import PowerAppError
-from powerapp.core.models.oauth import AccessToken
+from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import extend_qs
 
 
@@ -186,15 +187,22 @@ class OAuthClient(object):
                          'Server said %r', resp.content)
             raise PowerAppError(resp.content)
 
-        json_resp = self.response_parser(resp)
-        return json_resp.get('access_token'), json_resp.get('refresh_token')
+        return self.response_parser(resp)
 
-    def save_access_token(self, user, access_token):
-        return AccessToken.register(user, self.name, access_token)
+    def save_token(self, user, token):
+        kwargs = {
+            'user': user,
+            'client': self.name,
+            'access_token': token['access_token'],
+        }
+        for extra_field in ['expires_in', 'refresh_token', 'token_type']:
+            if extra_field in token:
+                kwargs[extra_field] = token[extra_field]
+        return OAuthToken.register(**kwargs)
 
     """
     def check_refresh_token(self, user):
-        access_token = AccessToken.get_by_client(user, self.name)
+        access_token = OAuthToken.get_by_client(user, self.name)
         if (access_token.time - datetime.datetime.now()).total_seconds > LIVE_TIME_ACCESS_TOKEN:
             self.refresh_token(user)
 
@@ -241,3 +249,29 @@ class OAuthClient(object):
 
     def parse_state(self, state):
         return dict(parse.parse_qsl(state or ''))
+
+    def get_oauth2_session(self, user):
+        """
+        Return the OAuth2 session client, which among others, knows how to
+        upgrade the access token with a refresh token value
+        """
+        # warning: oauth token may not exist, we should probably wrap this with
+        # a less generic exception
+        oauth_token = OAuthToken.objects.get(user=user, client=self.name)
+        token_dict = {
+            'access_token': oauth_token.access_token,
+            'expires_in': oauth_token.get_expires_in(),
+            'refresh_token': oauth_token.refresh_token,
+            'token_type': oauth_token.token_type,
+        }
+
+        def token_updater(token):
+            oauth_token.refresh(token)
+
+        session = OAuth2Session(client_id=self.get_client_id(),
+                                auto_refresh_url=self.access_token_endpoint,
+                                auto_refresh_kwargs={'client_secret': self.get_client_secret()},
+                                scope=self.scope,
+                                token=token_dict,
+                                token_updater=token_updater)
+        return session

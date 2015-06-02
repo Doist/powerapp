@@ -13,11 +13,11 @@ from powerapp.core.exceptions import PowerAppError
                        access_token_endpoint='%s/oauth/access_token' % settings.API_ENDPOINT,
                        scope='data:read_write,data:delete,project:delete',
                        redirect_uri_required=False)
-def todoist_oauth(client, access_token, request, **kwargs):
+def todoist_oauth(client, token, request):
     try:
-        user = User.objects.register(access_token)
+        user = User.objects.register(token['access_token'])
     except PowerAppError:
         raise Http404()
-    client.save_access_token(user, access_token)
+    client.save_token(user, token)
     check_user = authenticate(user=user)
     login(request, check_user)

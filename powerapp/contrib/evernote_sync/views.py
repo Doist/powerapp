@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from powerapp.core import generic_views
 from . import forms, utils
 from powerapp.core.models.integration import Integration
-from powerapp.core.models.oauth import AccessToken
+from powerapp.core.models.oauth import OAuthToken
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -64,7 +64,7 @@ def authorize_evernote_done(request):
         return render(request, 'evernote_sync/authorize_evernote_done.html',
                       {'error': error})
 
-    AccessToken.register(request.user, utils.ACCESS_TOKEN_CLIENT, access_token)
+    OAuthToken.register(request.user, utils.ACCESS_TOKEN_CLIENT, access_token)
     return redirect('evernote_sync:add_integration')
 
 
