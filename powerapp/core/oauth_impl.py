@@ -21,4 +21,3 @@ def todoist_oauth(client, access_token, request, **kwargs):
     client.save_access_token(user, access_token)
     check_user = authenticate(user=user)
     login(request, check_user)
-

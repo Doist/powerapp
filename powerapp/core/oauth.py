@@ -19,7 +19,6 @@ import uuid
 from logging import getLogger
 
 import requests
-from django.http import Http404
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
@@ -97,7 +96,6 @@ def get_client_by_state(request):
         'access_denied': u'Access denied',
     }
 
-
     if 'error' in request.GET:
         error_code = request.GET.get('error')
         error_message = server_error_codes.get(error_code, u'Unknown error')
@@ -166,6 +164,7 @@ class OAuthClient(object):
             'client_id': self.get_client_id(),
             'scope': self.scope or '',
             'state': self.create_state(),
+            'response_type': 'code',
         }
         if self.redirect_uri_required:
             qs['redirect_uri'] = self.get_oauth2cb_uri(request)

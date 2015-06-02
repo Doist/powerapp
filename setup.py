@@ -21,6 +21,7 @@ install_requires = [
     'requests',
     'feedparser',
     'pytz',
+    'google-api-python-client',
 ]
 
 

@@ -30,6 +30,9 @@ class AbstractOAuthToken(models.Model):
             ('user', 'client', 'scope'),
         ]
 
+    def __str__(self):
+        return '%s:%s' % (self.client, self.scope)
+
     @classmethod
     def register(cls, user, client, scope, token):
         """
