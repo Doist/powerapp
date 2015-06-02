@@ -61,12 +61,12 @@ class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
 
     def get(self, request, integration_id=None):
         integration = self.get_integration(request, integration_id)
-        form = self.form_class(request.user, integration=integration)
+        form = self.form_class(request, integration=integration)
         return render(request, self.get_template_name(), {'form': form})
 
     def post(self, request, integration_id=None):
         integration = self.get_integration(request, integration_id)
-        form = self.form_class(request.user, integration, data=request.POST)
+        form = self.form_class(request, integration, data=request.POST)
         if form.is_valid():
             integration = form.save()
             messages.info(request, "Integration '%s' saved" % integration.name)

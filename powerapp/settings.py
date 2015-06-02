@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.core.context_processors.static',
+                'powerapp.core.context_processors.settings_values',
             ],
         },
     },
@@ -114,6 +115,7 @@ STATIC_ROOT = 'staticfiles'
 API_ENDPOINT = env('API_ENDPOINT')
 TODOIST_CLIENT_ID = env('TODOIST_CLIENT_ID')
 TODOIST_CLIENT_SECRET = env('TODOIST_CLIENT_SECRET')
+GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION', None)
 
 LOGGING = {
     'version': 1,

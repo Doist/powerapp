@@ -18,8 +18,9 @@ class IntegrationForm(forms.Form):
     service_label = None
     name = forms.CharField(label=u'Integration name')
 
-    def __init__(self, user, integration=None, *args, **kwargs):
-        self.user = user
+    def __init__(self, request, integration=None, *args, **kwargs):
+        self.request = request
+        self.user = request.user
         self.integration = integration
         self.service = Service.objects.get(label=self.service_label)
 
@@ -58,6 +59,9 @@ class IntegrationForm(forms.Form):
         if not self.integration:
             self.integration = Integration(service_id=self.service_label,
                                            user=self.user)
+            self.integration_created = True
+        else:
+            self.integration_created = False
 
         # merge current integration settings with new values
         integration_settings = dict(self.integration.settings or {},

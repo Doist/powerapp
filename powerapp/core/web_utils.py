@@ -44,3 +44,12 @@ def convert_to_string(value):
     if value is True:
         return b'1'
     return force_bytes(value)
+
+
+def ensure_https(url):
+    """
+    Make sure the URL starts with https
+    """
+    parsed = list(parse.urlparse(url))
+    parsed[0] = 'https'
+    return parse.urlunparse(parsed)

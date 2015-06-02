@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
 from logging import getLogger
 from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter

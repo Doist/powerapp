@@ -26,8 +26,7 @@ from requests_oauthlib import OAuth2Session
 from django.utils.six.moves.urllib import parse
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.models.oauth import OAuthToken
-from powerapp.core.web_utils import extend_qs
-
+from powerapp.core.web_utils import extend_qs, ensure_https
 
 oauth_clients = {}
 
@@ -154,7 +153,7 @@ class OAuthClient(object):
         return getattr(settings, self.client_secret)
 
     def get_oauth2cb_uri(self, request):
-        return request.build_absolute_uri(reverse('web_oauth2cb'))
+        return ensure_https(request.build_absolute_uri(reverse('web_oauth2cb')))
 
     def get_authorize_url(self, request, **kwargs):
         """
