@@ -16,6 +16,3 @@ GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar'
                        oauth2cb_redirect_uri='gcal_sync:add_integration')
 def gcal_oauth(client, access_token, request, **kwargs):
     AccessToken.register(request.user, OAUTH_CLIENT_NAME, access_token)
-    refresh_token = kwargs.get('refresh_token')
-    if refresh_token:
-        RefreshToken.register(request.user, OAUTH_CLIENT_NAME, refresh_token)

@@ -1,18 +1,10 @@
-import datetime
 import logging
 
 from django.db import models
 from django.conf import settings
-from django.utils.timezone import now
-
-from powerapp.core.attrdict import AttrDict
 
 
 logger = logging.getLogger(__name__)
-
-
-class TodoistEvent(AttrDict):
-    pass
 
 
 class AbstractOAuthToken(models.Model):
@@ -47,24 +39,3 @@ class AbstractOAuthToken(models.Model):
 class AccessToken(AbstractOAuthToken):
     class Meta:
         app_label = 'core'
-
-
-class RefreshToken(AbstractOAuthToken):
-    class Meta:
-        app_label = 'core'
-
-
-def cron_sync(sync_interval=300):
-    """
-    Find all users who weren't recently updated, and update them all,
-    one by one.
-
-    :param check_interval: the Sync interval (in seconds)
-    """
-    from powerapp.core.models import User
-    # TODO: we might perform sync operations in parallel
-    next_sync = now() + datetime.timedelta(seconds=sync_interval)
-    for user in User.objects.filter(next_sync__lte=now):
-        user.cron_sync()
-        user.next_sync = next_sync
-        user.save()

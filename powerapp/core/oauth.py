@@ -24,7 +24,7 @@ from django.conf import settings
 
 from django.utils.six.moves.urllib import parse
 from powerapp.core.exceptions import PowerAppError
-from powerapp.core.models.oauth import AccessToken, RefreshToken
+from powerapp.core.models.oauth import AccessToken
 from powerapp.core.web_utils import extend_qs
 
 
@@ -192,9 +192,7 @@ class OAuthClient(object):
     def save_access_token(self, user, access_token):
         return AccessToken.register(user, self.name, access_token)
 
-    def save_refresh_token(self, user, refresh_token):
-        return RefreshToken.register(user, self.name, refresh_token)
-
+    """
     def check_refresh_token(self, user):
         access_token = AccessToken.get_by_client(user, self.name)
         if (access_token.time - datetime.datetime.now()).total_seconds > LIVE_TIME_ACCESS_TOKEN:
@@ -212,6 +210,7 @@ class OAuthClient(object):
         resp.raise_for_status()
 
         self.save_access_token(user, resp.json()['access_token'])
+    """
 
     def create_state(self):
         """
