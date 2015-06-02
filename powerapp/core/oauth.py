@@ -269,8 +269,10 @@ class OAuthClient(object):
 
         session = OAuth2Session(client_id=self.get_client_id(),
                                 auto_refresh_url=self.access_token_endpoint,
-                                auto_refresh_kwargs={'client_secret': self.get_client_secret()},
-                                scope=self.scope,
+                                auto_refresh_kwargs={
+                                    'client_id': self.get_client_id(),
+                                    'client_secret': self.get_client_secret(),
+                                },
                                 token=token_dict,
                                 token_updater=token_updater)
         return session

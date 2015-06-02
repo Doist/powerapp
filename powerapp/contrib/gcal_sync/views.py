@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from logging import getLogger
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
@@ -7,8 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from powerapp.core import generic_views, oauth, django_forms
 from . import utils, oauth_impl
+from powerapp.core.exceptions import PowerAppError
 from powerapp.core.models.integration import Integration
+from powerapp.core.models.user import User
 
+logger = getLogger(__name__)
 
 
 class IntegrationForm(django_forms.IntegrationForm):
@@ -55,4 +59,44 @@ def sync_now(request, integration_id):
 
 @csrf_exempt
 def accept_webhook(request, integration_id):
+    """
+    Google Calendar webhook handler
+
+    For more details see
+    https://developers.google.com/google-apps/calendar/v3/push?hl=en_US#receiving-notifications
+    """
+    channel_id = request.META['HTTP_X_GOOG_CHANNEL_ID']
+    resource_id = request.META['HTTP_X_GOOG_RESOURCE_ID']
+    resource_state = request.META['HTTP_X_GOOG_RESOURCE_STATE']
+    resource_uri = request.META['HTTP_X_GOOG_RESOURCE_URI']
+    token = request.META['HTTP_X_GOOG_CHANNEL_TOKEN']
+
+    try:
+        token_data = utils.validate_webhook_token(token)
+    except PowerAppError:
+        logger.debug("Invalid token %s. Quietly ignore", token)
+        return HttpResponse()
+
+    logger.debug('Received webhook from Google Calendar, '
+                 'channel_id=%s, token=%s, resource: (id=%s, state=%s, uri=%s)',
+                 channel_id, token, resource_id, resource_state, resource_uri)
+
+    try:
+        integation = Integration.objects.get(id=integration_id)
+    except Integration.DoesNotExist:
+        logger.debug('Integration %s does not exist. Stop channel', integration_id)
+        return _stop_channel(token_data['u'], channel_id, resource_id)
+
+    utils.sync_gcal(integation)
+    return HttpResponse()
+
+
+def _stop_channel(user_id, channel_id, resource_id):
+    user = get_object_or_404(User, id=user_id)
+    client = utils.get_authorized_client(user)
+    resp = utils.json_post(client, '/channels/stop',
+                           id=channel_id,
+                           resouceId=resource_id)
+    # FIXME: it doesn't work :/
+    print(resp)
     return HttpResponse()

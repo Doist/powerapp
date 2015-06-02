@@ -12,8 +12,8 @@ from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
 from powerapp.core.models.oauth import OAuthToken
 
-evernote_note_changed = Signal(providing_args=['user', 'note'])
-evernote_note_deleted = Signal(providing_args=['user', 'guid'])
+evernote_note_changed = Signal(providing_args=['integration', 'note'])
+evernote_note_deleted = Signal(providing_args=['integration', 'guid'])
 
 
 ACCESS_TOKEN_CLIENT = 'evernote_sync'
