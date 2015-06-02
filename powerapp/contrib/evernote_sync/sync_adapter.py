@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import re
 import time
+import datetime
+import pytz
+from logging import getLogger
 from evernote.edam.error.ttypes import EDAMNotFoundException
 import evernote.edam.type.ttypes as Types
 from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
@@ -9,7 +12,11 @@ from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 from . import utils
 
 
+EPOCH = datetime.datetime(1970,1,1)
 REMINDER_BASE_TIME = 946684800   # millenium
+
+
+logger = getLogger(__name__)
 
 
 def build_bridge(integration, project_id, notebook_guid):
@@ -48,14 +55,19 @@ class EvernoteSyncAdapter(SyncAdapter):
     Does not support syncing of tags yet
     """
     DEFAULT_NAME = 'evernote'
-    ESSENTIAL_FIELDS = ['content', 'item_order', 'checked']
+    ESSENTIAL_FIELDS = ['content', 'item_order', 'checked',
+                        'due_date', 'date_string']
 
     def __init__(self, notebook_guid):
         name = '%s-%s' % (self.DEFAULT_NAME, notebook_guid)
         super(EvernoteSyncAdapter, self).__init__(name=name)
         self.notebook_guid = notebook_guid
 
-    def push_task(self, task_id, task):
+    def push_task(self, task_id, task, extra):
+        """
+        Push task from Todoist to Evernote and save extra information in the
+        "extra" field
+        """
         client = utils.get_evernote_client(self.user)
         note_store = client.get_note_store()
 
@@ -77,19 +89,32 @@ class EvernoteSyncAdapter(SyncAdapter):
 
         note.attributes = Types.NoteAttributes()
         note.attributes.reminderOrder = REMINDER_BASE_TIME - task.item_order
+
         if task.checked:
             note.attributes.reminderDoneTime = int(time.time())
         else:
             note.attributes.reminderDoneTime = None
+
+        if task.due_date:
+            due_date_ms = int((task.due_date - EPOCH).total_seconds()) * 1000
+            note.attributes.reminderTime = due_date_ms
+        else:
+            note.attributes.reminderTime = None
 
         if create:
             note = note_store.createNote(note)
         else:
             note = note_store.updateNote(note)
 
-        return note.guid
+        new_extra = {
+            'original_content': task.content,
+            'original_due_date': task.due_date,
+            'original_date_string': task.date_string,
+        }
 
-    def delete_task(self, task_id):
+        return note.guid, new_extra
+
+    def delete_task(self, task_id, extra):
         client = utils.get_evernote_client(self.user)
         note_store = client.get_note_store()
         try:
@@ -101,28 +126,59 @@ class EvernoteSyncAdapter(SyncAdapter):
         note.attributes.reminderDoneTime = None
         note_store.updateNote(note)
 
+    def task_from_data(self, data, extra):
+        """
+        Take an evernote Note and return a new generic task. data is an
+        evernote Note instance
 
-def task_from_evernote(user, note):
-    """
-    Take an evernote Note and return a new generic task.
+        If evernote note doesn't have to be synchronized with Todoist,
+        return None.
+        """
+        if not data.attributes.reminderOrder:
+            return None
 
-    If evernote note doesn't have to be synchronized with Todoist, return
-    None
-    """
-    if not note.attributes.reminderOrder:
-        return None
+        note_url = utils.get_note_url(data)
+        content = '%s (%s)' % (note_url, data.title)
 
-    note_url = utils.get_note_url(user, note)
-    content = '%s (%s)' % (note_url, note.title)
+        item_order = REMINDER_BASE_TIME - data.attributes.reminderOrder
+        if item_order < 1:
+            item_order = 1
 
-    item_order = REMINDER_BASE_TIME - note.attributes.reminderOrder
-    if item_order < 1:
-        item_order = 1
-    return task(checked=note.attributes.reminderDoneTime is not None,
-                content=content, item_order=item_order)
+        if data.attributes.reminderTime is None:
+            due_date = None
+            date_string = None
+        else:
+            user = self.bridge.integration.user
+            user_timezone = user.get_timezone()
+
+            due_date = datetime.datetime.fromtimestamp(data.attributes.reminderTime / 1000)
+            local_due_date = user_timezone.normalize(pytz.utc.localize(due_date))
+            date_string = local_due_date.strftime('%d %b %Y at %H:%M')
+
+            logger.debug('Timezone dance. Convert %s from UTC to %s, get %s',
+                         data.attributes.reminderTime,
+                         user_timezone.zone,
+                         date_string)
+
+            # we don't want to overwrite "Todoist rich date strings"
+            original_due_date = extra.get('original_due_date')
+            original_date_string = extra.get('original_date_string')
+            if due_date == original_due_date:
+                logger.debug('Due date was not changed. Don\'t update the date')
+                date_string = original_date_string
+            else:
+                logger.debug('Due date changed from %s to %s. Update the date' % (original_due_date, due_date))
+
+        return task(checked=data.attributes.reminderDoneTime is not None,
+                    content=content, item_order=item_order, due_date=due_date,
+                    date_string=date_string)
 
 def plaintext_content(content):
     """
+    We expect the content of a task to be written in different formats. With
+    this function we extract only the "evernote-related stuff"
+
+
     Get rid of note_url (it's added by `task_from_evernote`) and keep just the
     plain content of the note
     """

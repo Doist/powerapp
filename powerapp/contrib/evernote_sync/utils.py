@@ -2,6 +2,7 @@
 """
 Evernote utility functions
 """
+import pytz
 from evernote.api.client import EvernoteClient
 from django.conf import settings
 from django.dispatch import Signal
@@ -41,7 +42,16 @@ def get_notebooks(user):
     return cache.notebooks
 
 
-def get_note_url(user, note):
+def get_evernote_timezone(user):
+    """
+    Return a pytz timezone object from user's Evernote settings
+    """
+    cache = get_evernote_account_cache(user)
+    cache.refresh()
+    return pytz.timezone(cache.user_data.timezone)
+
+
+def get_note_url(note):
     """
     Return evernote note URL by its guid
 
@@ -51,7 +61,7 @@ def get_note_url(user, note):
     to have more user-friendly URLs like
     https://[service]/Home.action?#b=[notebookGuid]&st=p&n=[noteGuid]
     """
-    client = get_evernote_client(user)
+    client = get_unauthorized_evernote_client()
     return 'https://%s/Home.action?#b=%s&st=p&n=%s' % (
         client.service_host, note.notebookGuid, note.guid,
     )

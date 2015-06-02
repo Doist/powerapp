@@ -1,3 +1,5 @@
+import re
+import pytz
 import datetime
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.exceptions import ObjectDoesNotExist
@@ -70,8 +72,33 @@ class User(AbstractBaseUser):
         self.api_last_sync = self.MILLENIUM
         self.save()
 
+    def get_timezone(self):
+        """
+        Return pytz timezone object from User settings
+        """
+        tzname = self.api.user.get('timezone')
+        pytz_tzname = tzname_todoist_to_pytz(tzname)
+        return pytz.timezone(pytz_tzname)
+
     class Meta:
         app_label = 'core'
 
     def __str__(self):
         return self.email
+
+
+re_todoist_static_tz = re.compile(r'GMT ([+-])(\d+):00$')
+
+
+def tzname_todoist_to_pytz(timezone_name):
+    """
+    GMT +XX:00 has to be converted to Etc/GMT-XX (mind that we change + to -
+    and vice versa)
+    """
+    match = re_todoist_static_tz.match(timezone_name)
+    if match:
+        plus_minus = match.group(1)
+        sign = {'+': '-', '-': '+'}[plus_minus]
+        return 'Etc/GMT%s%s' % (sign, match.group(2))
+    else:
+        return timezone_name

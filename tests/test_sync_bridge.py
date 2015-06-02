@@ -16,13 +16,16 @@ class SampleAdapter(SyncAdapter):
         super(SampleAdapter, self).__init__(name)
         self.storage = {}
 
-    def push_task(self, task_id, task):
+    def push_task(self, task_id, task, extra):
         task_id = task_id or self.random_id()
         self.storage[task_id] = task
-        return task_id
+        return task_id, {'foo': 'bar'}
 
-    def delete_task(self, task_id):
+    def delete_task(self, task_id, extra):
         self.storage.pop(task_id, None)
+
+    def task_from_data(self, data, extra):
+        return data
 
     @staticmethod
     def random_id():

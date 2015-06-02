@@ -51,6 +51,9 @@ class IntegrationForm(forms.Form):
         """
         return integration_settings
 
+    def post_save(self):
+        pass
+
     def save(self):
         if not self.integration:
             self.integration = Integration(service_id=self.service_label,

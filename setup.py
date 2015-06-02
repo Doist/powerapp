@@ -13,13 +13,14 @@ def read(filename):
 
 
 install_requires = [
-  'todoist-python',
-  'Django>=1.8',
-  'django-environ',
-  'django-picklefield',
-  'colorlog',
-  'requests',
-  'feedparser'
+    'todoist-python',
+    'Django>=1.8.2',
+    'django-environ',
+    'django-picklefield',
+    'colorlog',
+    'requests',
+    'feedparser',
+    'pytz',
 ]
 
 

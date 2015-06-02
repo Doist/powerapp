@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.db import models
-
+from picklefield.fields import PickledObjectField
 
 
 class BridgeManager(models.Manager):
@@ -34,9 +34,11 @@ class ItemMapping(models.Model):
     # item requisites
     left_id = models.CharField(u'"Left system" item id', max_length=512, null=True, db_index=True)
     left_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
+    left_extra = PickledObjectField(u'Extra data of the "left side"', default={})
 
     right_id = models.CharField(u'"Right system" item id', max_length=512, null=True, db_index=True)
     right_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
+    right_extra = PickledObjectField(u'Extra data of the "right side"', default={})
 
     class Meta:
         index_together = [
