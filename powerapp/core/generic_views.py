@@ -59,19 +59,42 @@ class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
     form = None
     service_label = None
 
+
+    def extra_template_context(self, request, integration):
+        """
+        For subclass EditIntegrationView to override this
+        method to provide extra context data to the template.
+
+        The extra context data could be accessed via the template variable
+        { extra_context.DICT_KEY }
+
+        :return: a dictionary
+        """
+        return {}
+
     def get(self, request, integration_id=None):
         integration = self.get_integration(request, integration_id)
         form = self.form_class(request, integration=integration)
-        return render(request, self.get_template_name(), {'form': form})
+        context = {
+            "form": form,
+            "extra_context": self.extra_template_context(request, integration)
+        }
+        return render(request, self.get_template_name(), context)
 
     def post(self, request, integration_id=None):
         integration = self.get_integration(request, integration_id)
         form = self.form_class(request, integration, data=request.POST)
+
         if form.is_valid():
             integration = form.save()
             messages.info(request, "Integration '%s' saved" % integration.name)
             return self.on_save()
-        return render(request, self.get_template_name(), {'form': form})
+
+        context = {
+            "form": form,
+            "extra_context": self.extra_template_context(request, integration)
+        }
+        return render(request, self.get_template_name(), context)
 
     def get_template_name(self):
         return '%s/edit_integration.html' % self.service_label

@@ -18,6 +18,9 @@
 
             {% block form_wrapper %}
                 {# edit integration form #}
+
+                {% block before_form %}{% endblock %}
+
                 <form action="." method="post" id="edit-integration">
                     {% block form %}{% materialize_form form %}{% endblock %}
                 </form>
