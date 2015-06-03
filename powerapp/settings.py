@@ -13,6 +13,7 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ['*']),
     API_ENDPOINT=(str, 'https://api.todoist.com'),
     SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
+    RAVEN_DSN=(str, None),
 )
 env.read_env('.env')
 
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'powerapp.core',
     'powerapp.sync_bridge',
+    'raven.contrib.django.raven_compat',
 ] + app_discovery()
 
 MIDDLEWARE_CLASSES = (
@@ -184,5 +186,20 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
+        'raven': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
     }
 }
+
+if env('RAVEN_DSN') is not None:
+    RAVEN_CONFIG = {
+        'dsn': env('RAVEN_DSN')
+    }
