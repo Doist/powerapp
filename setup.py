@@ -21,6 +21,7 @@ install_requires = [
     'requests',
     'feedparser',
     'pytz',
+    'raven',
     'requests-oauthlib',
     'pyRFC3339',
 ]
