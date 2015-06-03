@@ -8,7 +8,8 @@ from requests import HTTPError
 from pyrfc3339.parser import parse as parse_date
 from pyrfc3339.generator import generate as generate_date
 from powerapp.core.todoist_utils import plaintext_content
-from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task, undefined
+from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task, undefined, \
+    Task
 from powerapp.sync_bridge.models import ItemMapping
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 
@@ -61,7 +62,7 @@ class GcalSyncAdapter(SyncAdapter):
     def push_task(self, task_id, task, extra):
         """
         Push task from Todoist to Google Calendar and save extra information in the
-        "extra" field
+        "extra" field. If the task is in_history, we delete the event
         """
         user = self.bridge.integration.user
         client = utils.get_authorized_client(user)
@@ -128,6 +129,11 @@ class GcalSyncAdapter(SyncAdapter):
         """
         We sync back only due_date and date_string.
         """
+        if isinstance(data, Task):
+            # if it's a task object, we don't have to convert anything
+            # we use it to delete the task
+            return data
+
         try:
             gcal_due_date = parse_date(data['start']['dateTime'])
         except ValueError:
