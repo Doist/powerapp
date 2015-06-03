@@ -74,6 +74,7 @@ class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
 
     def get(self, request, integration_id=None):
         integration = self.get_integration(request, integration_id)
+
         form = self.form_class(request, integration=integration)
         context = {
             "form": form,
@@ -88,7 +89,7 @@ class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
         if form.is_valid():
             integration = form.save()
             messages.info(request, "Integration '%s' saved" % integration.name)
-            return self.on_save()
+            return self.on_save(integration)
 
         context = {
             "form": form,
@@ -99,7 +100,7 @@ class EditIntegrationView(LoginRequiredMixin, OAuthTokenRequiredMixin, View):
     def get_template_name(self):
         return '%s/edit_integration.html' % self.service_label
 
-    def on_save(self):
+    def on_save(self, integration):
         return redirect('web_index')
 
     @cached_property
