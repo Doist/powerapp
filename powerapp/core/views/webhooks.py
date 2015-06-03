@@ -38,8 +38,10 @@ def accept(request):
         # quietly ignore invalid JSON
         return HttpResponse()
 
+    logger.debug('Receive webhook %s', data)
+
     handle_stateful_integrations(data)
-    handle_stateless_integratoins(data)
+    handle_stateless_integrations(data)
 
     # Empty 200 OK response is enough to mark webhook as processed
     # on the server side
@@ -63,12 +65,10 @@ def request_valid(raw_data, signature):
 def handle_stateful_integrations(data):
     user_ids = {ev['user_id'] for ev in data}
     next_sync = now() + FAST_SYNC_INTERVAL
-    logger.debug('Mark stateful integrations of user with ids %s as to be '
-                 'processed at %s', user_ids, next_sync)
     Integration.objects.filter(user_id__in=user_ids, stateless=False).update(api_next_sync=next_sync)
 
 
-def handle_stateless_integratoins(data):
+def handle_stateless_integrations(data):
     user_ids = {ev['user_id'] for ev in data}
 
     # 1. Get all integrations

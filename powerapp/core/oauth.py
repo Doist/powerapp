@@ -147,10 +147,10 @@ class OAuthClient(object):
         self.redirect_uri_required = redirect_uri_required
 
     def get_client_id(self):
-        return getattr(settings, self.client_id)
+        return getattr(settings, self.client_id, '').strip()
 
     def get_client_secret(self):
-        return getattr(settings, self.client_secret)
+        return getattr(settings, self.client_secret, '').strip()
 
     def get_oauth2cb_uri(self, request):
         return ensure_https(request.build_absolute_uri(reverse('web_oauth2cb')))
