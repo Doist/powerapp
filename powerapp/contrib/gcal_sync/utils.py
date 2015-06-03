@@ -152,23 +152,32 @@ def sync_gcal(integration):
 
 
 def json_get(client, url, **params):
-    return client.get('https://www.googleapis.com/calendar/v3' + url,
-                      params=params).json()
+    resp = client.get('https://www.googleapis.com/calendar/v3' + url,
+                      params=params)
+    resp.raise_for_status()
+    return resp.json()
+
 
 def json_delete(client, url, **params):
-    return client.delete('https://www.googleapis.com/calendar/v3' + url,
+    resp = client.delete('https://www.googleapis.com/calendar/v3' + url,
                          params=params).json()
+    resp.raise_for_status()
+    return resp.json()
 
 
 def json_post(client, url, **data):
     headers = {'Content-type': 'application/json'}
-    return client.post('https://www.googleapis.com/calendar/v3' + url,
+    resp = client.post('https://www.googleapis.com/calendar/v3' + url,
                        data=json.dumps(data),
-                       headers=headers).json()
+                       headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
 
 def json_put(client, url, **data):
     headers = {'Content-type': 'application/json'}
-    return client.put('https://www.googleapis.com/calendar/v3' + url,
+    resp = client.put('https://www.googleapis.com/calendar/v3' + url,
                       data=json.dumps(data),
-                      headers=headers).json()
-
+                      headers=headers)
+    resp.raise_for_status()
+    return resp.json()

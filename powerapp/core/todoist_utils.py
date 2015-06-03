@@ -5,6 +5,10 @@ Todoist-related utils
 import re
 from collections import namedtuple
 from powerapp.core.sync import UserTodoistAPI
+from logging import getLogger
+
+
+logger = getLogger(__name__)
 
 
 def get_personal_project(integration, project_name, pid_field='project_id'):
@@ -45,7 +49,7 @@ url = namedtuple('url', ['link', 'title'])
 re_url = re.compile(r'''
     (?P<link>https?://[^ \(\)]+) # URL itself
     \s*                  # optional space
-    (\((?P<title>[^)]+)\))?       # optional text (in)
+    (?:\((?P<title>[^)]+)\))?       # optional text (in)
 ''', re.VERBOSE)
 
 
@@ -77,4 +81,6 @@ def plaintext_content(content, cut_url_pattern=None):
                 continue
 
         ret.append(chunk.strip('() '))
-    return ' '.join(ret)
+    ret = ' '.join(ret)
+    logger.debug('Plaintext content from %s -> %s (exclude links: %s)', content, ret, cut_url_pattern)
+    return ret

@@ -245,6 +245,7 @@ def normalize_due_date(due_date):
     if not isinstance(due_date, datetime.datetime):
         raise RuntimeError('Due date has to be None or a datetime object')
 
+    due_date = due_date.replace(tzinfo=None)
     return due_date
 
 
