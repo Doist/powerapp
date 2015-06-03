@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django import forms
 from powerapp.core.models import Service, Integration
-from powerapp.core import sync
+from powerapp.core import sync, tasks
 
 
 class IntegrationForm(forms.Form):
@@ -77,8 +77,6 @@ class IntegrationForm(forms.Form):
 
         # init stateless instances, we sync it and then we drop it
         if self.integration_created and self.integration.stateless:
-            api = sync.StatefulTodoistAPI.create(self.integration)
-            api.sync(resource_types=['projects', 'items', 'notes'],
-                     save_state=False)
+            tasks.initial_stateless_sync.delay(self.integration.id)
 
         return self.integration

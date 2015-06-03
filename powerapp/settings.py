@@ -117,6 +117,7 @@ STATIC_ROOT = 'staticfiles'
 REDIS_URL = env('REDIS_URL')
 BROKER_URL = '%s/0' % REDIS_URL
 CELERY_RESULT_BACKEND = '%s/1' % REDIS_URL
+CELERY_ACCEPT_CONTENT = ['pickle']
 
 # ==========================================================
 # PowerApp settings
