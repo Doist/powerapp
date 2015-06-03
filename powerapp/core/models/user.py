@@ -65,6 +65,7 @@ class User(AbstractBaseUser):
         obj = UserTodoistAPI.create(self)
         if self.api_last_sync < now() - SYNC_PERIOD:
             obj.sync(resource_types=["projects", "labels", "filters"])
+            obj.user.sync()
         return obj
 
     def reset_api(self):
@@ -79,6 +80,9 @@ class User(AbstractBaseUser):
         tzname = self.api.user.get('timezone')
         pytz_tzname = tzname_todoist_to_pytz(tzname)
         return pytz.timezone(pytz_tzname)
+
+    def get_inbox_project(self):
+        return self.api.user.get('inbox_project')
 
     class Meta:
         app_label = 'core'

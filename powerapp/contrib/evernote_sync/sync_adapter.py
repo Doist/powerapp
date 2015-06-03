@@ -6,6 +6,7 @@ import pytz
 from logging import getLogger
 from evernote.edam.error.ttypes import EDAMNotFoundException
 import evernote.edam.type.ttypes as Types
+from powerapp.core.todoist_utils import plaintext_content
 from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
 from powerapp.sync_bridge.models import ItemMapping
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
@@ -82,7 +83,7 @@ class EvernoteSyncAdapter(SyncAdapter):
             note = Types.Note()
             create = True
 
-        note.title = plaintext_content(task.content)
+        note.title = plaintext_content(task.content, cut_url_pattern='evernote.com')
         if create:
             note.content = utils.format_note_content('')
         note.notebookGuid = self.notebook_guid
@@ -172,18 +173,3 @@ class EvernoteSyncAdapter(SyncAdapter):
         return task(checked=data.attributes.reminderDoneTime is not None,
                     content=content, item_order=item_order, due_date=due_date,
                     date_string=date_string)
-
-def plaintext_content(content):
-    """
-    We expect the content of a task to be written in different formats. With
-    this function we extract only the "evernote-related stuff"
-
-
-    Get rid of note_url (it's added by `task_from_evernote`) and keep just the
-    plain content of the note
-    """
-    match = re.compile(r'^https?://\S*evernote.com.*?\((.*)\)$').match(content)
-    if match:
-        return match.group(1)
-    else:
-        return content

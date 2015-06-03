@@ -60,3 +60,21 @@ def extract_urls(text):
     for m in re_url.finditer(text):
         ret.append(url(m.group('link'), m.group('title')))
     return ret
+
+
+def plaintext_content(content, cut_url_pattern=None):
+    """
+    We expect the content of a task to be written in different formats. With
+    this function we extract only the plaintext content
+    """
+    ret = []
+    for chunk in re_url.split(content):
+        if not chunk:
+            continue
+
+        if cut_url_pattern and cut_url_pattern in chunk:
+            if chunk.startswith('http:') or chunk.startswith('https:'):
+                continue
+
+        ret.append(chunk.strip('() '))
+    return ' '.join(ret)

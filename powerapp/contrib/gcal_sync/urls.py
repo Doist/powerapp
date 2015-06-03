@@ -7,6 +7,5 @@ urlpatterns = [
     url(r'^integrations/(?P<integration_id>\d+)/$', EditIntegrationView.as_view(), name='edit_integration'),
     url(r'^authorize_gcal/', authorize_gcal, name='authorize_gcal'),
     url(r'^sync_now/(?P<integration_id>\d+)/$', sync_now, name='sync_now'),
-    #
     url(r'^webhooks/accept/(?P<integration_id>\d+)/$', accept_webhook, name='accept_webhook'),
 ]

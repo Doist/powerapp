@@ -87,13 +87,17 @@ class SyncBridge(object):
         # push the task and get a new local id and extra data back
         new_target_id, new_target_extra = target.push_task(target_id, task, target_extra)
 
-        # save the updated version of the id and extra information
-        setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
-        setattr(mapping, '%s_extra' % target_side, new_target_extra)
-        # save hashes
-        setattr(mapping, '%s_hash' % source_side, source_hash)
-        setattr(mapping, '%s_hash' % target_side, target_hash)
-        mapping.save()
+        if new_target_id:
+            # save the updated version of the id and extra information
+            setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
+            setattr(mapping, '%s_extra' % target_side, new_target_extra)
+            # save hashes
+            setattr(mapping, '%s_hash' % source_side, source_hash)
+            setattr(mapping, '%s_hash' % target_side, target_hash)
+            mapping.save()
+        else:
+            # the receiver part is not interested in this task
+            mapping.delete()
 
     def delete_task(self, source, task_id):
         """

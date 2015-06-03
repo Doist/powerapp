@@ -13,6 +13,7 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ['*']),
     API_ENDPOINT=(str, 'https://api.todoist.com'),
     SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
+    GOOGLE_SITE_VERIFICATION=(str, ''),
 )
 env.read_env('.env')
 
@@ -51,7 +52,6 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-
 )
 
 LOGIN_URL = 'web_login'
@@ -115,7 +115,7 @@ STATIC_ROOT = 'staticfiles'
 API_ENDPOINT = env('API_ENDPOINT')
 TODOIST_CLIENT_ID = env('TODOIST_CLIENT_ID')
 TODOIST_CLIENT_SECRET = env('TODOIST_CLIENT_SECRET')
-GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION', None)
+GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION')
 
 LOGGING = {
     'version': 1,
