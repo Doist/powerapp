@@ -181,6 +181,8 @@ class OAuthClient(object):
         if self.redirect_uri_required:
             post_data['redirect_uri'] = self.get_oauth2cb_uri(request)
         resp = requests.post(self.access_token_endpoint, data=post_data)
+        logger.debug('Exchange OAuth code for token. Endpoint: %s, data: %s',
+                     self.access_token_endpoint, post_data)
         if resp.status_code != 200:
             logger.error('Unable to exchange OAuth code for token. '
                          'Server said %r', resp.content)
