@@ -3,4 +3,5 @@
 # Heroku requirements file
 uWSGI
 psycopg2
+raven
 -e .
