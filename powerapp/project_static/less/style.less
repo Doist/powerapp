@@ -1,3 +1,6 @@
+.td_grey {
+  background-color: #ededed !important; }
+
 @import "lib/materialize";
 
 @page-padding: 20%;
@@ -21,8 +24,8 @@ a.muted {
 
 .powerapp-header {
 
-    &:extend(.white-text, .grey.darken-3);
-    @height: 64px;
+    &:extend(.white-text, .td_grey);
+    @height: 43px;
     @top-padding: 7px;
 
     padding-left: @page-padding;
@@ -38,24 +41,12 @@ a.muted {
         padding-top: @top-padding;
         height: @height - @top-padding;
         line-height: @height - @top-padding;
-        color: #FFFFFF;
+        color: #555;
+        font-size: 13px;
         img {
             vertical-align: text-bottom;
             margin-right: 5px;
         }
-    }
-
-    .powerapp-usermenu {
-        line-height: @height;
-        float: right;
-        min-width: 150px;
-        img:extend(.circle) {
-            vertical-align: middle;
-            margin-right: 5px;
-            width: 28px;
-            height: 28px;
-        }
-        color: #FFFFFF;
     }
 
 }
@@ -75,7 +66,7 @@ a.muted {
     flex-direction: row;
     flex-grow: 1;
 
-    .powerapp-left:extend(.grey.lighten-4) {
+    .powerapp-left {
         padding-top: 36px;
         padding-left: @page-padding;
         width: 35%;
@@ -84,19 +75,16 @@ a.muted {
             li {
                 display: block;
                 list-style: none;
-                text-transform: uppercase;
                 height: 42px;
                 line-height: 42px;
                 font-size: 10pt;
                 padding-left: 12px;
                 a {
-                    color: #c4c4c4;
+                    color: #666;
                 }
                 &.active {
-                    background-color: #FFFFFF;
-                    border: 1px solid #f0f0f0;
-                    border-right: none;
-                    border-bottom-left-radius: 2px;
+                    background-color: #f2f2f2;
+                    cursor: default;
                 }
             }
         }
@@ -106,7 +94,6 @@ a.muted {
         padding-top: 36px;
         padding-left: 30px;
         padding-right: @page-padding;
-        border-left: 1px solid #f0f0f0;
         width: 65%;
 
 
@@ -192,4 +179,23 @@ a.muted {
 
     }
 
+}
+
+.powerapp-right-menu {
+    float: right;
+    font-size: 13px;
+
+    li {
+        display: inline-block;
+        margin-left: 15px;
+    }
+
+    a {
+        color: #555;
+        font-weight: normal;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
 }

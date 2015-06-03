@@ -5,8 +5,8 @@
     <div class="row">
         <div class="col s6 title">Dashboard</div>
         <div class="col s6 right-align">
-            <a class="top-action-button" href="{% url 'web_services' %}">
-                <i class="mdi-content-add"></i> add service</a>
+            <a class="top-action-button red" href="{% url 'web_services' %}">
+                Add Service</a>
         </div>
     </div>
 
@@ -22,8 +22,8 @@
         <p>{{ integration.name }}</p>
         <div class="actions">
             <a href="{% url 'web_edit_integration' service_id=integration.service_id integration_id=integration.id %}"
-               class="btn left">Edit</a>
-            <button type="submit" class="btn red right" form="delete-integration-{{ integration.id }}">Delete</button>
+               class="btn left red">Edit</a>
+            <button type="submit" class="btn grey right" form="delete-integration-{{ integration.id }}">Delete</button>
         </div>
     </div>
     {% endfor %}
