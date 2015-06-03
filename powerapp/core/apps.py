@@ -105,6 +105,7 @@ class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, app
         A signal called by the constructor once the app instance is ready
         (once it's registered)
         """
+        logger.debug('Application %s is ready',  self.name)
         # export app settings
         self.export_settings()
         # import the submodule with signal handlers

@@ -15,7 +15,7 @@ logger = getLogger(__name__)
 
 @receiver(AppConfig.signals.todoist_task_added)
 @receiver(AppConfig.signals.todoist_task_updated)
-def on_task_changed(sender, user=None, service=None, integration=None, obj=None, **kwargs):
+def on_task_changed(sender, integration=None, obj=None, **kwargs):
     td = TodoistSyncAdapter(obj['project_id'])
     gc = GcalSyncAdapter()
     bridge = SyncBridge(integration, td, gc)
@@ -23,7 +23,7 @@ def on_task_changed(sender, user=None, service=None, integration=None, obj=None,
 
 
 @receiver(AppConfig.signals.todoist_task_deleted)
-def on_task_deleted(sender, user=None, service=None, integration=None, obj=None, **kwargs):
+def on_task_deleted(sender, integration=None, obj=None, **kwargs):
     td = TodoistSyncAdapter(obj['project_id'])
     gc = GcalSyncAdapter()
     bridge = SyncBridge(integration, td, gc)
