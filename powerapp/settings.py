@@ -13,7 +13,7 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ['*']),
     API_ENDPOINT=(str, 'https://api.todoist.com'),
     SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
-    GOOGLE_SITE_VERIFICATION=(str, ''),
+    RAVEN_DSN=(str, None),
 )
 env.read_env('.env')
 
@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'powerapp.core',
     'powerapp.sync_bridge',
+    'raven.contrib.django.raven_compat',
 ] + app_discovery()
 
 MIDDLEWARE_CLASSES = (
@@ -52,6 +53,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+
 )
 
 LOGIN_URL = 'web_login'
@@ -115,7 +117,7 @@ STATIC_ROOT = 'staticfiles'
 API_ENDPOINT = env('API_ENDPOINT')
 TODOIST_CLIENT_ID = env('TODOIST_CLIENT_ID')
 TODOIST_CLIENT_SECRET = env('TODOIST_CLIENT_SECRET')
-GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION')
+GOOGLE_SITE_VERIFICATION = None #env('GOOGLE_SITE_VERIFICATION', None)
 
 LOGGING = {
     'version': 1,
@@ -156,6 +158,10 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'colored'
         },
+        'sentry': {
+            'level': 'ERROR',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -184,5 +190,18 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
+        'raven': {
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'handlers': ['console'],
+            'propagate': False,
+        },
     }
 }
+
+if env('RAVEN_DSN') is not None:
+    RAVEN_CONFIG = {
+        'dsn': env('RAVEN_DSN')
+    }
