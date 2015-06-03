@@ -8,7 +8,6 @@ import requests
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.forms import fields
 from django.http import Http404, HttpResponse
 
 from powerapp.core import django_fields
@@ -22,6 +21,12 @@ from .models import GithubItemIssueMap
 
 GITHUB_AUTHORIZE_ENDPOINT = 'https://github.com/login/oauth/authorize'
 GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
+
+
+ACCESS_TOKEN_CLIENT = "github"
+
+
+SETTING_KEY_GITHUB_USER_ID = "github_user_id"
 
 
 class IntegrationForm(django_forms.IntegrationForm):
@@ -46,12 +51,26 @@ class EditIntegrationView(generic_views.EditIntegrationView):
         request.session['github_auth_redirect'] = request.path
         return redirect('github:authorize_github')
 
+    def on_save(self, integration):
+        if SETTING_KEY_GITHUB_USER_ID not in integration.settings:
+            access_token = OAuthToken.objects.get(user=integration.user, client=ACCESS_TOKEN_CLIENT)
+            resp = requests.get("https://api.github.com/user",
+                                params={'access_token': access_token.access_token},
+                                headers={'Accept': 'application/json'})
+
+            if resp.status_code != 200:
+                # TODO: handle unexpect error
+                pass
+
+            github_user_id = resp.json()['id']
+            integration.update_settings(**{SETTING_KEY_GITHUB_USER_ID: github_user_id})
+
+        return generic_views.EditIntegrationView.on_save(self, integration)
+
 
 @login_required
 def authorize_github(request):
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
-
-    print('client id', settings.GITHUB_CLIENT_ID)
 
     # TODO: better state generation, change scope
     auth_uri = extend_qs(GITHUB_AUTHORIZE_ENDPOINT,
@@ -84,7 +103,7 @@ def authorize_github_done(request):
         return render(request, 'github/authorize_github_done.html', {'error': error})
 
     access_token = resp.json()['access_token']
-    OAuthToken.register(request.user, 'github', access_token)
+    OAuthToken.register(request.user, ACCESS_TOKEN_CLIENT, access_token)
 
     redirect_target = request.session.pop('github_auth_redirect', None)
     if not redirect_target:
@@ -102,8 +121,6 @@ def webhook(request, *args, **kwargs):
 
     integration = get_object_or_404(Integration, id=integration_id)
     assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
-
-    print('header', request.META)
 
     if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
         raise Http404("")
