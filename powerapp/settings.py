@@ -15,6 +15,7 @@ env = environ.Env(
     SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
     GOOGLE_SITE_VERIFICATION=(str, ''),
     RAVEN_DSN=(str, None),
+    REDIS_URL=(str, 'redis://'),
 )
 env.read_env('.env')
 
@@ -64,7 +65,6 @@ AUTHENTICATION_BACKENDS = ('powerapp.core.django_auth_backend.TodoistUserAuth', 
 
 
 ROOT_URLCONF = 'powerapp.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -110,6 +110,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 STATIC_URL = '/static/'
 STATIC_ROOT = 'staticfiles'
+
+# ==========================================================
+# Celery (with Redis) Settings
+# ==========================================================
+REDIS_URL = env('REDIS_URL')
+BROKER_URL = '%s/0' % REDIS_URL
+CELERY_RESULT_BACKEND = '%s/1' % REDIS_URL
+CELERY_ACCEPT_CONTENT = ['pickle']
 
 # ==========================================================
 # PowerApp settings
