@@ -27,23 +27,20 @@ GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
 class IntegrationForm(django_forms.IntegrationForm):
     service_label = 'github'
     project = django_fields.ProjectChoiceField(label=u'Project to github tasks to')
-    webhook_url = fields.URLField(label=u'Your webhook URL')
-    webhook_url.widget.attrs['readonly'] = True
-
-    def __init__(self, request, integration=None, *args, **kwargs):
-        super(IntegrationForm, self).__init__(request, integration, *args, **kwargs)
-
-        if 'integration' in self:
-            print(self.integration)
-        else:
-            print(self)
-
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
     service_label = 'github'
     access_token_client = 'github'
     form = IntegrationForm
+
+    def extra_template_context(self, request, integration):
+        webhook_url = self.request.build_absolute_uri(
+            reverse('github:webhook', kwargs={"integration_id": integration.id}))
+
+        return {
+            "webhook_url": webhook_url
+        }
 
     def access_token_redirect(self, request):
         request.session['github_auth_redirect'] = request.path

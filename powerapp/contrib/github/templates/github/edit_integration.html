@@ -1,1 +1,30 @@
 {% extends "edit_integration_base.html" %}
+
+
+
+{% block before_form %}
+
+
+
+    <p><b>Github Integration Setup</b></p>
+    <p>
+        To complete the Github integration setup, you need to configure
+        your github repository webhook setting.
+    </p>
+
+    <ol>
+        <li>
+            In your Github repository setting, go to the "Webhooks & Services" section. Create a new webhook.
+        </li>
+        <li>
+            Fill in the "Payload URL" field with the following URL:
+            <br/>
+            <b>{{ extra_context.webhook_url }}</b>
+        </li>
+        <li>
+            For the webhook event setting, select "Issues", and complete the setup by saving the setting.
+        </li>
+    </ol>
+
+
+{% endblock %}
