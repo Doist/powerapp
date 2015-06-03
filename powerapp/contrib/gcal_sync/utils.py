@@ -160,7 +160,7 @@ def json_get(client, url, **params):
 
 def json_delete(client, url, **params):
     resp = client.delete('https://www.googleapis.com/calendar/v3' + url,
-                         params=params).json()
+                         params=params)
     resp.raise_for_status()
     return resp.json()
 
