@@ -112,6 +112,15 @@ def authorize_github_done(request):
     return redirect(redirect_target)
 
 
+
+def is_assignee(issue_event, github_user_id):
+    if ('assignee' not in issue_event
+            or issue_event['assignee'] is None):
+        return False
+
+    return issue_event['assignee']['id'] == github_user_id
+
+
 @csrf_exempt
 def webhook(request, *args, **kwargs):
     integration_id = kwargs.get("integration_id")
@@ -121,6 +130,12 @@ def webhook(request, *args, **kwargs):
 
     integration = get_object_or_404(Integration, id=integration_id)
     assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
+
+    if SETTING_KEY_GITHUB_USER_ID not in integration.settings:
+        # TODO: unexpected error. Log it
+        raise Http404("")
+
+    github_user_id = integration.settings[SETTING_KEY_GITHUB_USER_ID]
 
     if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
         raise Http404("")
@@ -136,7 +151,8 @@ def webhook(request, *args, **kwargs):
 
     issue_data = event_payload["issue"]
 
-    if event_payload["action"] == "opened":
+    if (event_payload["action"] == "opened"
+            and is_assignee(issue_data, github_user_id)):
         with integration.api.autocommit():
             item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
             item = integration.api.add_item(item_content)
@@ -145,5 +161,5 @@ def webhook(request, *args, **kwargs):
                                                 task_id=item['id'])
             mapping_record.save()
 
-        return HttpResponse("ok")
+    return HttpResponse("ok")
 
