@@ -1,26 +1,43 @@
 # -*- coding: utf-8 -*-
 
+import json
+
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 import requests
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.forms import fields
+from django.http import Http404, HttpResponse
 
 from powerapp.core import django_fields
+from powerapp.core.models.integration import Integration
 from powerapp.core import django_forms, generic_views
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import extend_qs
+from powerapp.core.sync import StatelessTodoistAPI
+from .models import GithubItemIssueMap
 
 
 GITHUB_AUTHORIZE_ENDPOINT = 'https://github.com/login/oauth/authorize'
 GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
 
-CLIENT_ID = "e9914ad98b5b53882a50"
-CLIENT_SECRET = "00a46c84b532fe23abbfe8b325b94bf656d9d529"
-
 
 class IntegrationForm(django_forms.IntegrationForm):
     service_label = 'github'
     project = django_fields.ProjectChoiceField(label=u'Project to github tasks to')
+    webhook_url = fields.URLField(label=u'Your webhook URL')
+    webhook_url.widget.attrs['readonly'] = True
+
+    def __init__(self, request, integration=None, *args, **kwargs):
+        super(IntegrationForm, self).__init__(request, integration, *args, **kwargs)
+
+        if 'integration' in self:
+            print(self.integration)
+        else:
+            print(self)
+
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -37,10 +54,11 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 def authorize_github(request):
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
 
-    # TODO: better state generation
+    print('client id', settings.GITHUB_CLIENT_ID)
+
+    # TODO: better state generation, change scope
     auth_uri = extend_qs(GITHUB_AUTHORIZE_ENDPOINT,
-                         client_id=CLIENT_ID,
-                         client_secret=CLIENT_SECRET,
+                         client_id=settings.GITHUB_CLIENT_ID,
                          scope="user",
                          redirect_uri=redirect_uri,
                          state="abdfasfafasd")
@@ -58,8 +76,8 @@ def authorize_github_done(request):
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
 
     resp = requests.post(GITHUB_ACCESS_TOKEN_ENDPOINT, data={
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
+        'client_id': settings.GITHUB_CLIENT_ID,
+        'client_secret': settings.GITHUB_CLIENT_SECRET,
         'code': authorization_code,
         'redirect_url': redirect_uri
     }, headers={'Accept': 'application/json'})
@@ -77,4 +95,41 @@ def authorize_github_done(request):
 
     return redirect(redirect_target)
 
+
+@csrf_exempt
+def webhook(request, *args, **kwargs):
+    integration_id = kwargs.get("integration_id")
+
+    if not integration_id:
+        raise Http404("")
+
+    integration = get_object_or_404(Integration, id=integration_id)
+    assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
+
+    print('header', request.META)
+
+    if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
+        raise Http404("")
+
+    # TODO: add payload verification
+    payload_digest = request.META.get("HTTP_X_HUB_SIGNATURE")
+
+    event_payload = json.loads(
+        request.body.decode(encoding='UTF-8'))
+
+    if not event_payload["action"] == "opened":
+        return HttpResponse("ok")
+
+    issue_data = event_payload["issue"]
+
+    if event_payload["action"] == "opened":
+        with integration.api.autocommit():
+            item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
+            item = integration.api.add_item(item_content)
+            mapping_record = GithubItemIssueMap(integration=integration,
+                                                issue_id=issue_data['id'],
+                                                task_id=item['id'])
+            mapping_record.save()
+
+        return HttpResponse("ok")
 

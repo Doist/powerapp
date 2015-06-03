@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-An extremely useful service to boost your morale. It adds notes with kittens
-to every task you create. Works only for premium accounts.
-"""
+import environ
 from powerapp.core.apps import ServiceAppConfig
 
+env = environ.Env()
 
 class AppConfig(ServiceAppConfig):
     name = 'powerapp.contrib.github'
@@ -12,3 +10,6 @@ class AppConfig(ServiceAppConfig):
     url = 'http://todoist.com'
     description = __doc__
     models_module = None
+
+    GITHUB_CLIENT_ID = env('GITHUB_CLIENT_ID', default=None)
+    GITHUB_CLIENT_SECRET = env('GITHUB_CLIENT_SECRET', default=None)
