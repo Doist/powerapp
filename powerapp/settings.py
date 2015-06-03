@@ -74,8 +74,6 @@ LOGIN_URL = 'web_login'
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ('powerapp.core.django_auth_backend.TodoistUserAuth', )
 
-
-
 ROOT_URLCONF = 'powerapp.urls'
 TEMPLATES = [
     {
@@ -97,8 +95,8 @@ TEMPLATES = [
 
 
 STATICFILES_FINDERS = (
-  'django.contrib.staticfiles.finders.FileSystemFinder',
-  'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 )
 STATICFILES_DIRS = [root('powerapp/project_static')]
 
@@ -179,6 +177,12 @@ LOGGING = {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
         },
+        'static_fields': {
+            '()': 'powerapp.core.logfilters.StaticFieldFilter',
+            'fields': {
+                'project': 'powerapp',
+            },
+        },
     },
 
     # Log handlers: to console and to email (unless DEBUG=True)
@@ -198,7 +202,13 @@ LOGGING = {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
-        }
+        },
+        'graypy': {
+            'level': 'DEBUG',
+            'class': 'graypy.GELFHandler',
+            'host': env('GRAYLOG2_HOST', ''),
+            'port': env('GRAYLOG2_PORT', 12201),
+        },
     },
 
     # Root logger
@@ -210,7 +220,7 @@ LOGGING = {
     # All other loggers
     'loggers': {
         'powerapp': {
-            'handlers': ['console'],
+            'handlers': ['console', 'graypy'],
             'level': 'DEBUG',
             'propagate': False,
         },
