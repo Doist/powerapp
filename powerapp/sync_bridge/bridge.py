@@ -63,7 +63,8 @@ class SyncBridge(object):
         source_extra = getattr(mapping, '%s_extra' % source_side)
         target_extra = getattr(mapping, '%s_extra' % target_side)
         task = source.task_from_data(data, source_extra)
-        if task is None:
+
+        if task is None or is_task_undefined(task):
             logger.debug('%s refuses to send %r (extra: %r)', source, data, source_extra)
             return
 
@@ -205,26 +206,68 @@ class SyncAdapter(object):
 Task = namedtuple('Task', TASK_FIELDS)
 
 
-def task(checked=False, content='', date_string=None, due_date=None,
-         in_history=False, indent=1, item_order=0, priority=1, tags=None):
+# undefined is a special object to mark fields which don't have to be changed
+# on sync
+class Undefined(object):
+    def __repr__(self):
+        return '(undefined)'
+    def __str__(self):
+        return '(undefined)'
+undefined = Undefined()
+
+
+def defined(*values):
+    """
+    Helper function which returns the first non-undefined object. Can be used
+    as a replacement `value or default_value` like::
+
+        defined(value, default_value)
+    """
+    for v in values:
+        if v is not undefined:
+            return v
+
+
+def task(checked=undefined,
+         content=undefined,
+         date_string=undefined,
+         due_date=undefined,
+         in_history=undefined,
+         indent=undefined,
+         item_order=undefined,
+         priority=undefined,
+         tags=undefined):
     """
     A helper function to create tasks
     """
     # for the sake of unification (we need to have equal hashes),
     # make sure we have same types for empty values
-    checked = bool(checked)
-    content = content or ''
-    date_string = date_string or None
-    due_date = normalize_due_date(due_date)
-    in_history = bool(in_history)
-    indent = int(indent)
-    item_order = int(item_order)
-    priority = int(priority)
-    tags = tags or []
+    if checked is not undefined:
+        checked = bool(checked)
+    if content is not undefined:
+        content = content or ''
+    if date_string is not undefined:
+        date_string = date_string or None
+    if due_date is not undefined:
+        due_date = normalize_due_date(due_date)
+    if in_history is not undefined:
+        in_history = bool(in_history)
+    if indent is not undefined:
+        indent = int(indent)
+    if item_order is not undefined:
+        item_order = int(item_order)
+    if priority is not undefined:
+        priority = int(priority)
+    if tags is not undefined:
+        tags = tags or []
 
     # create a task object itself
     return Task(checked, content, date_string, due_date, in_history,
                 indent, item_order, priority, tags)
+
+
+def is_task_undefined(task):
+    return all(i is undefined for i in task)
 
 
 def normalize_due_date(due_date):
@@ -256,6 +299,10 @@ def get_hash(obj, essential_fields):
 
 
 def json_default(obj):
+    if obj is undefined:
+        # we need something to be clearly distinguishable from null,
+        # 0 or empty strings
+        return {'object': 'undefined'}
     if isinstance(obj, datetime.date):
         return obj.strftime('%Y-%m-%d')
     elif isinstance(obj, datetime.datetime):

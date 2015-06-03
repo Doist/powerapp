@@ -8,7 +8,7 @@ from requests import HTTPError
 from pyrfc3339.parser import parse as parse_date
 from pyrfc3339.generator import generate as generate_date
 from powerapp.core.todoist_utils import plaintext_content
-from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
+from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task, undefined
 from powerapp.sync_bridge.models import ItemMapping
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 
@@ -87,8 +87,9 @@ class GcalSyncAdapter(SyncAdapter):
             task_id = uuid.uuid4().hex
 
         event_duration = get_event_duration(orig_event)
+        event_content = plaintext_content(task.content, 'google.com/calendar')
         attrs = {
-            'summary': plaintext_content(task.content, 'google.com/calendar'),
+            'summary': event_content,
             'start': {
                 'dateTime': generate_date(task.due_date, accept_naive=True),
             },
@@ -106,7 +107,8 @@ class GcalSyncAdapter(SyncAdapter):
             command = utils.json_put
             url = '/calendars/%s/events/%s' % (self.get_calendar_id(), task_id)
         resp = command(client, url, **attrs)
-        logger.debug('Create or update a task on %s. Data: %s. Server replied: %s', url, attrs, resp)
+        logger.debug('Create or update a task on %s. '
+                     'Data: %s. Server replied: %s', url, attrs, resp)
         new_extra = {
             'original_content': task.content,
             'original_due_date': task.due_date,
@@ -124,11 +126,7 @@ class GcalSyncAdapter(SyncAdapter):
 
     def task_from_data(self, data, extra):
         """
-        Take an Google Calendar event and return a new generic task. data is a
-        Google Calendar event instance
-
-        If the event doesn't have to be synchronized with Todoist,
-        return None.
+        We sync back only due_date and date_string.
         """
         try:
             gcal_due_date = parse_date(data['start']['dateTime'])
@@ -136,28 +134,32 @@ class GcalSyncAdapter(SyncAdapter):
             # an event without a due date (whole day event maybe). Skip
             return
 
+        # if the task is new, we should fill in the content
+        if not extra:
+            plaintext_content = data.get('summary') or 'Google Calendar event'
+            backlink = data['htmlLink']
+            content = '%s (%s)' % (backlink, plaintext_content)
+        else:
+            content = undefined
+
+        # sync due date and date string, but
+        # don't overwrite "Todoist rich date strings"
         due_date_utc = gcal_due_date.astimezone(pytz.utc)
         user_timezone = self.bridge.integration.user.get_timezone()
         local_due_date = gcal_due_date.astimezone(user_timezone)
         date_string = local_due_date.strftime('%d %b %Y at %H:%M')
 
-        # we don't want to overwrite "Todoist rich date strings"
         original_due_date = extra.get('original_due_date')
-        original_date_string = extra.get('original_date_string')
         if due_date_utc.replace(tzinfo=None) == original_due_date:
             logger.debug('Due date was not changed. Don\'t update the date')
-            date_string = original_date_string
+            due_date_utc = undefined
+            date_string = undefined
         else:
             logger.debug('Due date changed from %s to %s. Update the date' % (original_due_date, due_date_utc))
-
-        plaintext_content = data.get('summary') or 'Google Calendar event'
-        backlink = data['htmlLink']
-        content = '%s (%s)' % (backlink, plaintext_content)
 
         return task(content=content,
                     due_date=due_date_utc,
                     date_string=date_string)
-
 
 
 def get_event_duration(event, default=datetime.timedelta(hours=1)):
