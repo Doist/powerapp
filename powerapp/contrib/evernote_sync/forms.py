@@ -105,11 +105,6 @@ class IntegrationForm(django_forms.IntegrationForm):
         watchlist, we have to perform the initial synchronization for them and
         their corresponding Todoist projects.
         """
-        self._new_notebook_guids = set()
-        if self.integration.id is None:
-            # skip new integrations, we'll be synchronized shortly afterwards
-            return
-
         old_guids = self.integration.settings.get('evernote_notebooks', [])
         new_guids = integration_settings.get('evernote_notebooks', [])
         self._new_notebook_guids = set(new_guids) - set(old_guids)

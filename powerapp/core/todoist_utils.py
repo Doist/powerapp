@@ -66,7 +66,7 @@ def extract_urls(text):
     return ret
 
 
-def plaintext_content(content, cut_url_pattern=None):
+def plaintext_content(content, cut_url_pattern=None, cut_all_urls=False):
     """
     We expect the content of a task to be written in different formats. With
     this function we extract only the plaintext content
@@ -76,7 +76,7 @@ def plaintext_content(content, cut_url_pattern=None):
         if not chunk:
             continue
 
-        if cut_url_pattern and cut_url_pattern in chunk:
+        if (cut_url_pattern and cut_url_pattern in chunk) or cut_all_urls:
             if chunk.startswith('http:') or chunk.startswith('https:'):
                 continue
 

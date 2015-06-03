@@ -7,7 +7,7 @@ from logging import getLogger
 from evernote.edam.error.ttypes import EDAMNotFoundException
 import evernote.edam.type.ttypes as Types
 from powerapp.core.todoist_utils import plaintext_content
-from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task
+from powerapp.sync_bridge.bridge import SyncAdapter, SyncBridge, task, undefined
 from powerapp.sync_bridge.models import ItemMapping
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 from . import utils
@@ -163,10 +163,10 @@ class EvernoteSyncAdapter(SyncAdapter):
 
             # we don't want to overwrite "Todoist rich date strings"
             original_due_date = extra.get('original_due_date')
-            original_date_string = extra.get('original_date_string')
             if due_date == original_due_date:
                 logger.debug('Due date was not changed. Don\'t update the date')
-                date_string = original_date_string
+                date_string = undefined
+                due_date = undefined
             else:
                 logger.debug('Due date changed from %s to %s. Update the date' % (original_due_date, due_date))
 

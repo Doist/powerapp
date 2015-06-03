@@ -87,7 +87,7 @@ class GcalSyncAdapter(SyncAdapter):
             task_id = uuid.uuid4().hex
 
         event_duration = get_event_duration(orig_event)
-        event_content = plaintext_content(task.content, 'google.com/calendar')
+        event_content = plaintext_content(task.content, cut_all_urls=True)
         attrs = {
             'summary': event_content,
             'start': {
@@ -136,9 +136,9 @@ class GcalSyncAdapter(SyncAdapter):
 
         # if the task is new, we should fill in the content
         if not extra:
-            plaintext_content = data.get('summary') or 'Google Calendar event'
+            plaintext = data.get('summary') or 'Google Calendar event'
             backlink = data['htmlLink']
-            content = '%s (%s)' % (backlink, plaintext_content)
+            content = '%s (%s)' % (backlink, plaintext)
         else:
             content = undefined
 
