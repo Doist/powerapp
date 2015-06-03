@@ -78,6 +78,7 @@ class IntegrationForm(forms.Form):
         # init stateless instances, we sync it and then we drop it
         if self.integration_created and self.integration.stateless:
             api = sync.StatefulTodoistAPI.create(self.integration)
-            api.sync(resource_types=['projects', 'items', 'notes'])
+            api.sync(resource_types=['projects', 'items', 'notes'],
+                     save_state=False)
 
         return self.integration
