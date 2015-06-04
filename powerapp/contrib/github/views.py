@@ -157,6 +157,18 @@ def is_assignee(issue_event, github_user_id):
     return issue_event['assignee']['id'] == github_user_id
 
 
+def create_task_from_issue(integration, issue_data):
+    with integration.api.autocommit():
+        item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
+        target_project = integration.settings['project']
+        item = integration.api.add_item(item_content, project_id=target_project)
+        mapping_record = GithubItemIssueMap(integration=integration,
+                                            issue_id=issue_data['id'],
+                                            issue_url=issue_data['url'],
+                                            task_id=item['id'])
+        mapping_record.save()
+
+
 @csrf_exempt
 def webhook(request, integration_id):
     integration = get_object_or_404(Integration, id=integration_id)
@@ -177,17 +189,18 @@ def webhook(request, integration_id):
     event_payload = json.loads(force_text(request.body))
     issue_data = event_payload["issue"]
 
-    if ((event_payload["action"] == "opened" or event_payload["action"] == "reopened")
+
+    # NOTE: Here we purposely ignore "opened" event type because when a
+    # issue is open and assigned, two webhook event request (opened, assigned) are sent
+
+    if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
             and is_assignee(issue_data, github_user_id)):
-        with integration.api.autocommit():
-            item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
-            target_project = integration.settings['project']
-            item = integration.api.add_item(item_content, project_id=target_project)
-            mapping_record = GithubItemIssueMap(integration=integration,
-                                                issue_id=issue_data['id'],
-                                                issue_url=issue_data['url'],
-                                                task_id=item['id'])
-            mapping_record.save()
+        try:
+            item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
+                                                               issue_id=issue_data['id'])
+            # item should already existed. Do nothing now
+        except GithubItemIssueMap.DoesNotExist:
+            create_task_from_issue(integration, issue_data)
 
     if event_payload["action"] == "closed":
         with integration.api.autocommit():
