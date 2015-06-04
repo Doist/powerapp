@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import requests
+import json
 from logging import getLogger
 from .apps import AppConfig
 from django.dispatch.dispatcher import receiver
@@ -18,9 +19,10 @@ def on_task_changed(sender, user=None, service=None, integration=None, obj=None,
 
         if obj.data.get("checked"):
             access_token = OAuthToken.objects.get(user=integration.user, client=ACCESS_TOKEN_CLIENT)
+
             resp = requests.patch(item_issue_record.issue_url,
                                   params={'access_token': access_token.access_token},
-                                  data={'state': "closed"},
+                                  json={'state': "closed"},
                                   headers={'Accept': 'application/json'})
 
             if resp.status_code != 200:
