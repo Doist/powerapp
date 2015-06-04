@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import json
+import binascii
 import uuid
+import hmac
+from hashlib import sha1
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
@@ -10,6 +13,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.http import Http404, HttpResponse
+import django.forms
 
 from powerapp.core import django_fields
 from powerapp.core.models.integration import Integration
@@ -34,6 +38,8 @@ OAUTH_STATE_SESSION_KEY = "github_oauth_state"
 class IntegrationForm(django_forms.IntegrationForm):
     service_label = 'github'
     project = django_fields.ProjectChoiceField(label=u'Project to github tasks to')
+    init_secret = uuid.uuid4().__str__()
+    webhook_secret = django.forms.fields.CharField(label="Webhook 'Secret' string", required=True, initial=init_secret)
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -170,21 +176,26 @@ def webhook(request, *args, **kwargs):
     github_user_id = integration.settings[SETTING_KEY_GITHUB_USER_ID]
 
     if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
+        return HttpResponse("ok")
+
+    # payload verification
+    received_hmac = request.META.get("HTTP_X_HUB_SIGNATURE")
+    hmac_key = integration.settings['webhook_secret']
+    actual_hmac_byte = hmac.new(hmac_key.encode('UTF-8'), request.body, sha1).digest()
+    actual_hmac_str = binascii.hexlify(actual_hmac_byte).decode('UTF-8')
+
+    if not received_hmac == ('sha1=' + actual_hmac_str):
         raise Http404("")
 
-    # TODO: add payload verification
-    payload_digest = request.META.get("HTTP_X_HUB_SIGNATURE")
-
-    event_payload = json.loads(
-        request.body.decode(encoding='UTF-8'))
-
+    event_payload = json.loads(request.body.decode(encoding='UTF-8'))
     issue_data = event_payload["issue"]
 
     if ((event_payload["action"] == "opened" or event_payload["action"] == "reopened")
             and is_assignee(issue_data, github_user_id)):
         with integration.api.autocommit():
             item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
-            item = integration.api.add_item(item_content)
+            target_project = integration.settings['project']
+            item = integration.api.add_item(item_content, project_id=target_project)
             mapping_record = GithubItemIssueMap(integration=integration,
                                                 issue_id=issue_data['id'],
                                                 issue_url=issue_data['url'],
