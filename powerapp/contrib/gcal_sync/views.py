@@ -40,8 +40,7 @@ def authorize_gcal(request):
     client = oauth.get_client_by_name(oauth_impl.OAUTH_CLIENT_NAME)
     authorize_url = client.get_authorize_url(request,
                                              access_type='offline',
-                                             approval_prompt='force',
-                                             login_hint=request.user.email)
+                                             approval_prompt='force')
     client.set_state(request)
     context = {'authorize_url': authorize_url}
     return render(request, 'gcal_sync/authorize_gcal.html', context)
