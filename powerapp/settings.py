@@ -23,6 +23,9 @@ env = environ.Env(
     STATSD_HOST=(str, 'localhost'),
     STATSD_PORT=(int, 8125),
     STATSD_PREFIX=(str, 'powerapp'),
+    # graylog default settings
+    GRAYLOG2_HOST=(str, None),
+    GRAYLOG2_PORT=(int, 12201),
 )
 env.read_env('.env')
 
@@ -203,12 +206,6 @@ LOGGING = {
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
         },
-        'graypy': {
-            'level': 'DEBUG',
-            'class': 'graypy.GELFHandler',
-            'host': env('GRAYLOG2_HOST', ''),
-            'port': env('GRAYLOG2_PORT', 12201),
-        },
     },
 
     # Root logger
@@ -220,7 +217,7 @@ LOGGING = {
     # All other loggers
     'loggers': {
         'powerapp': {
-            'handlers': ['console', 'graypy'],
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
         },
@@ -247,3 +244,12 @@ if env('RAVEN_DSN') is not None:
     RAVEN_CONFIG = {
         'dsn': env('RAVEN_DSN')
     }
+
+if env('GRAYLOG2_HOST') is not None:
+    LOGGING['handlers']['graypy'] = {
+        'level': 'DEBUG',
+        'class': 'graypy.GELFHandler',
+        'host': env('GRAYLOG2_HOST'),
+        'port': env('GRAYLOG2_PORT'),
+    }
+    LOGGING['loggers']['powerapp']['handlers'].append('graypy')
