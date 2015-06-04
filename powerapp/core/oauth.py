@@ -201,26 +201,6 @@ class OAuthClient(object):
                 kwargs[extra_field] = token[extra_field]
         return OAuthToken.register(**kwargs)
 
-    """
-    def check_refresh_token(self, user):
-        access_token = OAuthToken.get_by_client(user, self.name)
-        if (access_token.time - datetime.datetime.now()).total_seconds > LIVE_TIME_ACCESS_TOKEN:
-            self.refresh_token(user)
-
-    def refresh_token(self, user):
-        refresh_token = RefreshToken.objects.get(user=user, client=self.name)
-        post_data = {
-            'client_id': self.get_client_id(),
-            'client_secret': self.get_client_secret(),
-            'refresh_token': refresh_token.token,
-            'grant_type': 'refresh_token',
-        }
-        resp = requests.post(self.access_token_endpoint, data=post_data)
-        resp.raise_for_status()
-
-        self.save_access_token(user, resp.json()['access_token'])
-    """
-
     def create_state(self):
         """
         Create the state value (as a string)

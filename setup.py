@@ -14,6 +14,7 @@ def read(filename):
 
 install_requires = [
     'todoist-python',
+    'celery[redis]',
     'Django>=1.8.2',
     'django-environ',
     'django-picklefield',
