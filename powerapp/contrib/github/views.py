@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-
 import json
-import binascii
 import uuid
 import hmac
 from hashlib import sha1
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
+from django.utils.encoding import force_text, force_bytes
 import requests
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -105,7 +104,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 @login_required
 def authorize_github(request):
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
-    oauth_state_str = uuid.uuid4().__str__()
+    oauth_state_str = str(uuid.uuid4())
     request.session[OAUTH_STATE_SESSION_KEY] = oauth_state_str
 
     auth_uri = extend_qs(GITHUB_AUTHORIZE_ENDPOINT,
@@ -150,7 +149,6 @@ def authorize_github_done(request):
     return redirect(redirect_target)
 
 
-
 def is_assignee(issue_event, github_user_id):
     if ('assignee' not in issue_event
             or issue_event['assignee'] is None):
@@ -160,34 +158,23 @@ def is_assignee(issue_event, github_user_id):
 
 
 @csrf_exempt
-def webhook(request, *args, **kwargs):
-    integration_id = kwargs.get("integration_id")
-
-    if not integration_id:
-        raise Http404("")
-
+def webhook(request, integration_id):
     integration = get_object_or_404(Integration, id=integration_id)
     assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
-
-    if SETTING_KEY_GITHUB_USER_ID not in integration.settings:
-        # TODO: unexpected error. Log it
-        raise Http404("")
-
     github_user_id = integration.settings[SETTING_KEY_GITHUB_USER_ID]
 
+    # ignore everything which is not an issue event
     if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
-        return HttpResponse("ok")
+        return HttpResponse()
 
     # payload verification
     received_hmac = request.META.get("HTTP_X_HUB_SIGNATURE")
     hmac_key = integration.settings['webhook_secret']
-    actual_hmac_byte = hmac.new(hmac_key.encode('UTF-8'), request.body, sha1).digest()
-    actual_hmac_str = binascii.hexlify(actual_hmac_byte).decode('UTF-8')
-
-    if not received_hmac == ('sha1=' + actual_hmac_str):
+    actual_hmac = hmac.new(force_bytes(hmac_key), request.body, sha1).hexdigest()
+    if received_hmac != ('sha1=' + actual_hmac):
         raise Http404("")
 
-    event_payload = json.loads(request.body.decode(encoding='UTF-8'))
+    event_payload = json.loads(force_text(request.body))
     issue_data = event_payload["issue"]
 
     if ((event_payload["action"] == "opened" or event_payload["action"] == "reopened")
@@ -210,8 +197,9 @@ def webhook(request, *args, **kwargs):
             except GithubItemIssueMap.DoesNotExist:
                 return HttpResponse("ok")
 
-            integration.api.item_update(item_issue_record.task_id, checked=True, in_history=True)
+            integration.api.item_update(item_issue_record.task_id,
+                                        checked=True,
+                                        in_history=True)
             item_issue_record.delete()
 
     return HttpResponse("ok")
-
