@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
-from requests import HTTPError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
@@ -8,10 +7,9 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from powerapp.core import generic_views, oauth, django_forms
-from . import utils, oauth_impl
+from . import utils, oauth_impl, tasks
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.models.integration import Integration
-from powerapp.core.models.user import User
 
 logger = getLogger(__name__)
 
@@ -52,8 +50,8 @@ def sync_now(request, integration_id):
     integration = get_object_or_404(Integration,
                                     id=integration_id,
                                     user_id=request.user.id)
-    utils.sync_gcal(integration)
-    messages.info(request, 'Synchronization performed')
+    tasks.sync_gcal.delay(integration.id)
+    messages.info(request, 'Synchronization with Google Calendar scheduled')
     return redirect('gcal_sync:edit_integration', integration.id)
 
 
@@ -86,23 +84,9 @@ def accept_webhook(request, integration_id):
                  channel_id, token, resource_id, resource_state, resource_uri)
 
     try:
-        integation = Integration.objects.get(id=integration_id)
+        integration = Integration.objects.get(id=integration_id)
     except Integration.DoesNotExist:
-        logger.debug('Integration %s does not exist. Stop channel', integration_id)
-        return _stop_channel(token_data['u'], channel_id, resource_id)
+        return tasks.stop_channel.delay(token_data['u'], channel_id, resource_id)
 
-    utils.sync_gcal(integation)
-    return HttpResponse()
-
-
-def _stop_channel(user_id, channel_id, resource_id):
-    user = get_object_or_404(User, id=user_id)
-    client = utils.get_authorized_client(user)
-    try:
-        resp = utils.json_post(client, '/channels/stop',
-                               id=channel_id,
-                               resouceId=resource_id)
-    except HTTPError:
-        # FIXME: it doesn't work :/
-        pass
+    tasks.sync_gcal.delay(integration.id)
     return HttpResponse()

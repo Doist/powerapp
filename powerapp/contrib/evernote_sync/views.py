@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.utils.html import strip_tags
 from django.views.decorators.http import require_POST
 from powerapp.core import generic_views
-from . import forms, utils
+from . import forms, utils, tasks
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
 
@@ -74,6 +74,6 @@ def sync_now(request, integration_id):
     integration = get_object_or_404(Integration,
                                     id=integration_id,
                                     user_id=request.user.id)
-    utils.sync_evernote(integration)
-    messages.info(request, 'Synchronization performed')
+    tasks.sync_evernote.delay(integration.id)
+    messages.info(request, 'Synchronization with Evernote scheduled')
     return redirect('evernote_sync:edit_integration', integration.id)

@@ -4,9 +4,11 @@ Google Calendar utility functions
 """
 import json
 import uuid
+from requests import HTTPError
 from logging import getLogger
 from django.core.urlresolvers import reverse
 from django.dispatch.dispatcher import Signal
+from django.shortcuts import get_object_or_404
 from django.utils.crypto import salted_hmac, constant_time_compare
 from powerapp.core import oauth
 from . import oauth_impl

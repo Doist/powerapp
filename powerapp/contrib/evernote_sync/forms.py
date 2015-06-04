@@ -19,7 +19,6 @@ class SwitchWidget(forms.Widget):
         return data.getlist(name, None)
 
     def render(self, name, value, attrs=None):
-        print(name, value)
         checked_options = set(value or [])
         ret = []
         for value, label in self.choices:
