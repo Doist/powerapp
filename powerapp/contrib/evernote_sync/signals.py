@@ -6,6 +6,7 @@ from django.dispatch.dispatcher import receiver
 from .apps import AppConfig
 from powerapp.contrib.evernote_sync.sync_adapter import EvernoteSyncAdapter, \
     get_bridge_by_guid, build_bridge
+from powerapp.core.exceptions import PowerAppInvalidTokenError
 from powerapp.sync_bridge.bridge import SyncBridge
 from powerapp.sync_bridge.todoist_sync_adapter import TodoistSyncAdapter
 from . import utils
@@ -65,4 +66,8 @@ def on_note_deleted(sender, integration, guid, **kwargs):
 
 @AppConfig.periodic_task(datetime.timedelta(minutes=1 if settings.DEBUG else 15))
 def sync_evernote(integration):
-    utils.sync_evernote(integration)
+    try:
+        utils.sync_evernote(integration)
+    except PowerAppInvalidTokenError:
+        logger.warning("Evernote access token for %s not found. "
+                       "Skip synchronization", integration.user)

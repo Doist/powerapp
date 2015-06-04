@@ -10,6 +10,7 @@ from django.utils.html import escape
 from evernote.edam.notestore.ttypes import SyncChunkFilter
 from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
+from powerapp.core.exceptions import PowerAppInvalidTokenError
 from powerapp.core.models.oauth import OAuthToken
 
 evernote_note_changed = Signal(providing_args=['integration', 'note'])
@@ -29,7 +30,10 @@ def get_evernote_client(user):
     """
     Return the authenticated version of the Evernote client
     """
-    token = OAuthToken.objects.get(user=user, client=ACCESS_TOKEN_CLIENT)
+    try:
+        token = OAuthToken.objects.get(user=user, client=ACCESS_TOKEN_CLIENT)
+    except OAuthToken.DoesNotExist:
+        raise PowerAppInvalidTokenError()
     return EvernoteClient(token=token.access_token, sandbox=settings.EVERNOTE_SANDBOX)
 
 
