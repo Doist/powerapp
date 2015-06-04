@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+import time
 from contextlib import contextmanager
-from django.utils.timezone import now
-import todoist
 from copy import deepcopy
 from logging import getLogger
-from django.conf import settings
-from powerapp.core.exceptions import return_or_raise
 
+from django.utils.timezone import now
+from django.conf import settings
+
+import todoist
+from django_statsd.clients import statsd
+from powerapp.core.exceptions import return_or_raise
 
 logger = getLogger(__name__)
 
@@ -51,7 +54,9 @@ class UserTodoistAPI(TodoistAPI):
         return obj
 
     def sync(self, commands=None, **kwargs):
+        start_time = time.time()
         new_state = super(UserTodoistAPI, self).sync(commands, **kwargs)
+        self._save_statsd(start_time)
         return_or_raise(new_state)
 
         self.user_obj.api_state = self.serialize()
@@ -59,6 +64,14 @@ class UserTodoistAPI(TodoistAPI):
         self.user_obj.save(update_fields=['api_state', 'api_last_sync'])
 
         return new_state
+
+    def _save_statsd(self, start_time):
+        ms = int((time.time() - start_time) * 1000)
+        statsd.incr('core.sync.cnt')
+        statsd.gauge('core.sync.runtime_ms', ms)
+        statsd.incr('core.sync.user.cnt')
+        statsd.gauge('core.sync.user.runtime_ms', ms)
+
 
 
 class StatelessTodoistAPI(TodoistAPI):
@@ -80,8 +93,11 @@ class StatelessTodoistAPI(TodoistAPI):
         Make a sync request, but never ask for server data,
         don't emit any signals, and don't update the sync state
         """
+        start_time = time.time()
         kwargs.pop('resource_types', None)
-        return super(StatelessTodoistAPI, self).sync(commands, **kwargs)
+        new_state = super(StatelessTodoistAPI, self).sync(commands, **kwargs)
+        _save_integration_statsd(self.integration, start_time)
+        return new_state
 
     def item_update(self, item_id, **kwargs):
         """ stateless "update item" """
@@ -146,7 +162,9 @@ class StatefulTodoistAPI(TodoistAPI):
 
     def sync(self, commands=None, **kwargs):
         current_state = deepcopy(self.state)
+        start_time = time.time()
         new_state = super(StatefulTodoistAPI, self).sync(commands, **kwargs)
+        _save_integration_statsd(self.integration, start_time)
         return_or_raise(new_state)
 
         if kwargs.pop('save_state', True):
@@ -186,3 +204,13 @@ class StatefulTodoistAPI(TodoistAPI):
 
                 signal_obj = self.integration.app_config.signals[event_name]
                 signal_obj.fire(self.integration, obj)
+
+
+def _save_integration_statsd(integration, start_time):
+    ms = int((time.time() - start_time) * 1000)
+    statsd.incr('core.sync.cnt')
+    statsd.gauge('core.sync.runtime_ms', ms)
+    statsd.incr('core.sync.integration.cnt')
+    statsd.gauge('core.sync.integration.runtime_ms', ms)
+    statsd.incr('core.sync.integration.%s.cnt' % integration.service_id)
+    statsd.gauge('core.sync.integration.%s.runtime_ms' % integration.service_id, ms)

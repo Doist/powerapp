@@ -27,7 +27,7 @@ def integration_cnt_incr(sender, instance=None, created=None, **kwargs):
         statsd.incr('integration_cnt.%s' % instance.service_id)
 
 
-@receiver(post_save, sender=Integration)
+@receiver(post_delete, sender=Integration)
 def integration_cnt_decr(sender, instance=None, **kwargs):
     statsd.decr('integration_cnt')
     statsd.decr('integration_cnt.%s' % instance.service_id)
