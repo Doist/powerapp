@@ -2057,9 +2057,7 @@ nav,
 .collapsible,
 .side-nav,
 .powerapp-main .powerapp-content .top-action-button,
-.powerapp-main .powerapp-content .dashboard-card img,
-.powerapp-main .powerapp-content .service-card,
-.powerapp-main .powerapp-content .service-card .service-picture img {
+.powerapp-main .powerapp-content .service-card {
   -webkit-box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
   -moz-box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
@@ -8719,16 +8717,8 @@ body,
 html {
   height: 100%;
 }
-body {
-  display: flex;
-  flex-direction: column;
-}
 .powerapp-header {
-  padding-left: 20%;
-  padding-right: 20%;
-  flex-basis: 43px;
-  flex-grow: 0;
-  flex-shrink: 0;
+  height: 43px;
 }
 .powerapp-header .powerapp-logo {
   display: block;
@@ -8743,26 +8733,16 @@ body {
   vertical-align: text-bottom;
   margin-right: 5px;
 }
-.powerapp-main-plain {
-  padding-left: 20%;
-  padding-right: 20%;
-  flex-grow: 1;
-}
 .powerapp-main-plain > div {
   width: 100%;
   text-align: center;
 }
-.powerapp-main {
-  display: flex;
-  flex-direction: row;
-  flex-grow: 1;
-}
-.powerapp-main .powerapp-left {
+.powerapp-main .powerapp-nav {
+  float: left;
   padding-top: 36px;
-  padding-left: 20%;
-  width: 35%;
+  width: 195px;
 }
-.powerapp-main .powerapp-left .left-menu li {
+.powerapp-main .powerapp-nav .left-menu li {
   display: block;
   list-style: none;
   height: 42px;
@@ -8770,18 +8750,17 @@ body {
   font-size: 10pt;
   padding-left: 12px;
 }
-.powerapp-main .powerapp-left .left-menu li a {
+.powerapp-main .powerapp-nav .left-menu li a {
   color: #666;
 }
-.powerapp-main .powerapp-left .left-menu li.active {
+.powerapp-main .powerapp-nav .left-menu li.active {
   background-color: #f2f2f2;
   cursor: default;
 }
 .powerapp-main .powerapp-content {
+  float: right;
   padding-top: 36px;
-  padding-left: 30px;
-  padding-right: 20%;
-  width: 65%;
+  min-width: 600px;
 }
 .powerapp-main .powerapp-content .title {
   font-size: 18pt;
@@ -8789,7 +8768,6 @@ body {
 .powerapp-main .powerapp-content .dashboard-card {
   float: left;
   width: 250px;
-  min-width: 200px;
   padding: 10px;
   text-align: center;
   border: 1px solid #e5e5e5;
@@ -8806,25 +8784,23 @@ body {
   margin-top: 30px;
 }
 .powerapp-main .powerapp-content .dashboard-card .actions {
-  visibility: hidden;
-  transition: visibility 0s;
+  margin-top: 8px;
+  opacity: 0.3;
+  transition: opacity 0.5s;
 }
 .powerapp-main .powerapp-content .dashboard-card:hover .actions {
   opacity: 1;
-  visibility: visible;
 }
 .powerapp-main .powerapp-content .service-card {
   border-radius: 2px;
   display: flex;
   flex-direction: row;
   margin-bottom: 25px;
-  min-width: 600px;
+  max-width: 600px;
 }
 .powerapp-main .powerapp-content .service-card .service-picture {
   text-align: center;
   padding: 24px 20px 20px 20px;
-  width: 200px;
-  min-width: 200px;
 }
 .powerapp-main .powerapp-content .service-card .service-picture img {
   border-radius: 8px;
@@ -8833,9 +8809,8 @@ body {
   margin-bottom: 25px;
 }
 .powerapp-main .powerapp-content .service-card .service-description {
-  border-left: 1px solid #ededed;
   padding: 24px 20px 20px 20px;
-  min-width: 400px;
+  width: 100%;
 }
 .powerapp-main .powerapp-content .service-card .service-description h4 {
   text-transform: uppercase;
@@ -8848,6 +8823,12 @@ body {
 }
 .powerapp-main .powerapp-content .service-card .service-description form {
   margin-top: 100px;
+}
+.powerapp-dashboard-top {
+  margin-top: 12px;
+}
+.powerapp-dashboard-top .title {
+  padding: 0;
 }
 .powerapp-right-menu {
   float: right;
@@ -8863,4 +8844,34 @@ body {
 }
 .powerapp-right-menu a:hover {
   text-decoration: underline;
+}
+.powerapp-container {
+  max-width: 900px;
+  margin: auto;
+  padding: 0 40px;
+}
+@media screen and (max-width: 870px) {
+  .left-menu li {
+    display: inline-block !important;
+    padding: 0 12px !important;
+  }
+  .powerapp-nav,
+  .powerapp-content {
+    float: none !important;
+    padding-top: 15px !important;
+  }
+  .powerapp-main .powerapp-content {
+    min-width: 0 !important;
+  }
+  .service-card,
+  .dashboard-card {
+    min-width: none !important;
+    max-width: none !important;
+  }
+}
+@media screen and (max-width: 500px) {
+  .service-picture img {
+    width: 50px !important;
+    height: 50px !important;
+  }
 }

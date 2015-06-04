@@ -15,14 +15,15 @@
 
 <body>
     <div class="powerapp-header">
+        <div class="powerapp-container">
+            <a class="powerapp-logo" href="{% url 'web_index' %}">
+                <img src="{% static 'img/logo.gif' %}" width="36" />
+                PowerApp
+            </a>
 
-        <a class="powerapp-logo" href="{% url 'web_index' %}">
-            <img src="{% static 'img/logo.gif' %}" width="36" />
-            PowerApp
-        </a>
-
-        {% block usermenu %}
-        {% endblock %}
+            {% block usermenu %}
+            {% endblock %}
+        </div>
     </div>
 
     {% block main %}

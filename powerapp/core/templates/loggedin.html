@@ -12,9 +12,9 @@
 {% endblock %}
 
 {% block main %}
-    <div class="powerapp-main">
+    <div class="powerapp-main powerapp-container">
 
-        <div class="powerapp-left">
+        <div class="powerapp-nav">
             <ul class="left-menu">
                 <li{% if active == "dashboard" %} class="active"{% endif %}><a href="{% url 'web_index' %}">Dashboard</a></li>
                 <li{% if active == "services" %} class="active"{% endif %}><a href="{% url 'web_services' %}">Services</a></li>
