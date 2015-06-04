@@ -30,15 +30,17 @@ GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
 
 
 ACCESS_TOKEN_CLIENT = "github"
-SETTING_KEY_GITHUB_USER_ID = "github_user_id"
 OAUTH_STATE_SESSION_KEY = "github_oauth_state"
+
+SETTING_KEY_GITHUB_USER_ID = "github_user_id"
+SETTING_KEY_WEBHOOK_SECRET = "webhook_secret"
+SETTING_KEY_PROJECT = "project"
 
 
 class IntegrationForm(django_forms.IntegrationForm):
     service_label = 'github'
     project = django_fields.ProjectChoiceField(label=u'Project to github tasks to')
-    init_secret = uuid.uuid4().__str__()
-    webhook_secret = django.forms.fields.CharField(label="Webhook 'Secret' string", required=True, initial=init_secret)
+    webhook_secret = django.forms.fields.CharField(label="Webhook 'Secret' string", required=True)
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -69,22 +71,18 @@ class EditIntegrationView(generic_views.EditIntegrationView):
         integration = self.get_integration(request, integration_id)
 
         if not integration:
+            """
+            Here we have the integration directly when user first added integration.
+
+            This is needed because to generate webhook url, we needed to have a saved
+            integration first.
+            """
             service = Service.objects.get(label=self.service_label)
             integration = Integration(service_id=self.service_label,
                                       name=service.app_config.verbose_name,
                                       user=request.user)
             integration.save()
 
-            redirect_uri = request.build_absolute_uri(
-                reverse('github:edit_integration', kwargs={"integration_id": integration.id}))
-
-            return redirect(redirect_uri)
-
-        return generic_views.EditIntegrationView.get(self, request, integration.id)
-
-
-    def on_save(self, integration):
-        if SETTING_KEY_GITHUB_USER_ID not in integration.settings:
             access_token = OAuthToken.objects.get(user=integration.user, client=ACCESS_TOKEN_CLIENT)
             resp = requests.get("https://api.github.com/user",
                                 params={'access_token': access_token.access_token},
@@ -94,11 +92,20 @@ class EditIntegrationView(generic_views.EditIntegrationView):
                 # TODO: handle unexpect error
                 pass
 
-            github_user_id = resp.json()['id']
-            integration.update_settings(**{SETTING_KEY_GITHUB_USER_ID: github_user_id})
+            initial_integration_setting = {
+                SETTING_KEY_GITHUB_USER_ID: resp.json()['id'],
+                SETTING_KEY_WEBHOOK_SECRET: uuid.uuid4().__str__(),
+                SETTING_KEY_PROJECT: request.user.get_inbox_project()
+            }
 
-        return generic_views.EditIntegrationView.on_save(self, integration)
+            integration.update_settings(**initial_integration_setting)
 
+            redirect_uri = request.build_absolute_uri(
+                reverse('github:edit_integration', kwargs={"integration_id": integration.id}))
+
+            return redirect(redirect_uri)
+
+        return generic_views.EditIntegrationView.get(self, request, integration.id)
 
 
 @login_required
@@ -160,7 +167,7 @@ def is_assignee(issue_event, github_user_id):
 def create_task_from_issue(integration, issue_data):
     with integration.api.autocommit():
         item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
-        target_project = integration.settings['project']
+        target_project = integration.settings[SETTING_KEY_PROJECT]
         item = integration.api.add_item(item_content, project_id=target_project)
         mapping_record = GithubItemIssueMap(integration=integration,
                                             issue_id=issue_data['id'],
@@ -198,6 +205,7 @@ def webhook(request, integration_id):
         try:
             item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
                                                                issue_id=issue_data['id'])
+            item_issue_record.save()
             # item should already existed. Do nothing now
         except GithubItemIssueMap.DoesNotExist:
             create_task_from_issue(integration, issue_data)
