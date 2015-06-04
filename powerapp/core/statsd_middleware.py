@@ -31,5 +31,3 @@ class GrafanaRequestTimingMiddleware(object):
             data = dict(module=request._view_module, name=request._view_name,
                         method=request.method)
             statsd.gauge('view.response_ms.{module}.{name}.{method}'.format(**data), ms)
-            statsd.gauge('view.response_ms.{module}.{method}'.format(**data), ms)
-            statsd.gauge('view.response_ms.{method}'.format(**data), ms)
