@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.views.generic import View
 from powerapp.core.django_forms import IntegrationForm
+from powerapp.core.exceptions import PowerAppInvalidTokenError
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
 
@@ -42,7 +43,14 @@ class OAuthTokenRequiredMixin(object):
                                           client=self.access_token_client).exists():
             return self.access_token_redirect(request)
         else:
-            return super(OAuthTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
+            try:
+                return super(OAuthTokenRequiredMixin, self).dispatch(request, *args, **kwargs)
+            except PowerAppInvalidTokenError:
+                # something goes wrong, the access token is invalid
+                # clean it up and redirect back to access token form
+                OAuthToken.objects.filter(user=request.user,
+                                          client=self.access_token_client).delete()
+                return self.access_token_redirect(request)
 
     def access_token_redirect(self, request):
         raise NotImplementedError('Implement "access_token_redirect" function '

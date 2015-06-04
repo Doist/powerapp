@@ -28,3 +28,11 @@ class PowerAppError(Exception):
     Base class for all "managed exceptions" we raise
     """
     pass
+
+
+class PowerAppInvalidTokenError(PowerAppError):
+    """
+    The exception is raised when we found that the OAuth token is invalid or
+    non-existent
+    """
+    pass
