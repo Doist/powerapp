@@ -13,6 +13,9 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ['*']),
     API_ENDPOINT=(str, 'https://api.todoist.com'),
     SECURE_PROXY_SSL_HEADER=(list, ['HTTP_X_FORWARDED_PROTO', 'https']),
+    GOOGLE_SITE_VERIFICATION=(str, ''),
+    RAVEN_DSN=(str, None),
+    REDIS_URL=(str, 'redis://'),
 )
 env.read_env('.env')
 
@@ -40,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'powerapp.core',
     'powerapp.sync_bridge',
+    'raven.contrib.django.raven_compat',
 ] + app_discovery()
 
 MIDDLEWARE_CLASSES = (
@@ -61,7 +65,6 @@ AUTHENTICATION_BACKENDS = ('powerapp.core.django_auth_backend.TodoistUserAuth', 
 
 
 ROOT_URLCONF = 'powerapp.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -109,13 +112,21 @@ STATIC_URL = '/static/'
 STATIC_ROOT = 'staticfiles'
 
 # ==========================================================
+# Celery (with Redis) Settings
+# ==========================================================
+REDIS_URL = env('REDIS_URL')
+BROKER_URL = '%s/0' % REDIS_URL
+CELERY_RESULT_BACKEND = '%s/1' % REDIS_URL
+CELERY_ACCEPT_CONTENT = ['pickle']
+
+# ==========================================================
 # PowerApp settings
 # ==========================================================
 
 API_ENDPOINT = env('API_ENDPOINT')
 TODOIST_CLIENT_ID = env('TODOIST_CLIENT_ID')
 TODOIST_CLIENT_SECRET = env('TODOIST_CLIENT_SECRET')
-GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION', None)
+GOOGLE_SITE_VERIFICATION = env('GOOGLE_SITE_VERIFICATION')
 
 LOGGING = {
     'version': 1,
@@ -156,6 +167,10 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'colored'
         },
+        'sentry': {
+            'level': 'ERROR',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -184,5 +199,18 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
+        'raven': {
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'handlers': ['console'],
+            'propagate': False,
+        },
     }
 }
+
+if env('RAVEN_DSN') is not None:
+    RAVEN_CONFIG = {
+        'dsn': env('RAVEN_DSN')
+    }

@@ -5,24 +5,16 @@
 
     <form method="post" action="{% url 'web_logout' %}" class="hide" id="logout-form">{% csrf_token %}</form>
 
-    <ul id="usermenu-items" class="usermenu-items dropdown-content">
-        <li><a href="https://todoist.com" target="_blank">open Todoist</a></li>
-        <li class="divider"></li>
-        <li><a href="{% url 'web_logout' %}" id="logout-link">logout</a></li>
+    <ul class="powerapp-right-menu">
+        <li><a href="https://todoist.com" target="_blank">Open Todoist</a></li>
+        <li><a href="{% url 'web_logout' %}" id="logout-link">Logout</a></li>
     </ul>
-
-    <a class="powerapp-usermenu" href="#!" data-activates="usermenu-items">
-        {% static 'img/default_avatar28px.png' as default_avatar %}
-        <img src="{{ user.api.user.get.avatar_small|default:default_avatar }}">
-        {{ user.api.user.get.full_name|default:user.email }}
-        <i class="mdi-navigation-arrow-drop-down right"></i>
-    </a>
 {% endblock %}
 
 {% block main %}
-    <div class="powerapp-main">
+    <div class="powerapp-main powerapp-container">
 
-        <div class="powerapp-left">
+        <div class="powerapp-nav">
             <ul class="left-menu">
                 <li{% if active == "dashboard" %} class="active"{% endif %}><a href="{% url 'web_index' %}">Dashboard</a></li>
                 <li{% if active == "services" %} class="active"{% endif %}><a href="{% url 'web_services' %}">Services</a></li>

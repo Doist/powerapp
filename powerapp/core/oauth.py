@@ -147,10 +147,10 @@ class OAuthClient(object):
         self.redirect_uri_required = redirect_uri_required
 
     def get_client_id(self):
-        return getattr(settings, self.client_id)
+        return getattr(settings, self.client_id, '').strip()
 
     def get_client_secret(self):
-        return getattr(settings, self.client_secret)
+        return getattr(settings, self.client_secret, '').strip()
 
     def get_oauth2cb_uri(self, request):
         return ensure_https(request.build_absolute_uri(reverse('web_oauth2cb')))
@@ -181,6 +181,8 @@ class OAuthClient(object):
         if self.redirect_uri_required:
             post_data['redirect_uri'] = self.get_oauth2cb_uri(request)
         resp = requests.post(self.access_token_endpoint, data=post_data)
+        logger.debug('Exchange OAuth code for token. Endpoint: %s, data: %s',
+                     self.access_token_endpoint, post_data)
         if resp.status_code != 200:
             logger.error('Unable to exchange OAuth code for token. '
                          'Server said %r', resp.content)
@@ -198,26 +200,6 @@ class OAuthClient(object):
             if extra_field in token:
                 kwargs[extra_field] = token[extra_field]
         return OAuthToken.register(**kwargs)
-
-    """
-    def check_refresh_token(self, user):
-        access_token = OAuthToken.get_by_client(user, self.name)
-        if (access_token.time - datetime.datetime.now()).total_seconds > LIVE_TIME_ACCESS_TOKEN:
-            self.refresh_token(user)
-
-    def refresh_token(self, user):
-        refresh_token = RefreshToken.objects.get(user=user, client=self.name)
-        post_data = {
-            'client_id': self.get_client_id(),
-            'client_secret': self.get_client_secret(),
-            'refresh_token': refresh_token.token,
-            'grant_type': 'refresh_token',
-        }
-        resp = requests.post(self.access_token_endpoint, data=post_data)
-        resp.raise_for_status()
-
-        self.save_access_token(user, resp.json()['access_token'])
-    """
 
     def create_state(self):
         """

@@ -6,15 +6,15 @@
                 <div class="service-picture">
                     <img src="{{ service.logo_url }}"
                          alt="{{ service.verbose_name }}">
-                    <br>
-                    <a class="top-action-button" href="{{ service.urls.add_integration }}">
-                        <i class="mdi-content-add"></i> add service</a>
                 </div>
 
                 <div class="service-description">
                     <h4>{{ service.app_config.verbose_name }}</h4>
                     <p><a href="{{ service.app_config.url }}" class="muted">{{ service.app_config.url }}</a></p>
                     <p>{{ service.app_config.description }}</p>
+                    <br>
+                    <a class="top-action-button red" href="{{ service.urls.add_integration }}">
+                        Add</a>
                 </div>
         </div>
     {% endfor %}

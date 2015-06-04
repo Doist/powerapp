@@ -11,7 +11,3 @@ def on_integration_create(sender, instance=None, created=None, **kwargs):
     if created:
         # create periodic tasks
         periodic_tasks.add(instance)
-        # init stateless instances, we sync it and then we drop it
-        if instance.stateless:
-            api = sync.StatefulTodoistAPI.create(instance)
-            api.sync(resource_types=['projects', 'items', 'notes'])

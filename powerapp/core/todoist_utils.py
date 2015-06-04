@@ -5,6 +5,10 @@ Todoist-related utils
 import re
 from collections import namedtuple
 from powerapp.core.sync import UserTodoistAPI
+from logging import getLogger
+
+
+logger = getLogger(__name__)
 
 
 def get_personal_project(integration, project_name, pid_field='project_id'):
@@ -45,7 +49,7 @@ url = namedtuple('url', ['link', 'title'])
 re_url = re.compile(r'''
     (?P<link>https?://[^ \(\)]+) # URL itself
     \s*                  # optional space
-    (\((?P<title>[^)]+)\))?       # optional text (in)
+    (?:\((?P<title>[^)]+)\))?       # optional text (in)
 ''', re.VERBOSE)
 
 
@@ -59,4 +63,24 @@ def extract_urls(text):
     ret = []
     for m in re_url.finditer(text):
         ret.append(url(m.group('link'), m.group('title')))
+    return ret
+
+
+def plaintext_content(content, cut_url_pattern=None, cut_all_urls=False):
+    """
+    We expect the content of a task to be written in different formats. With
+    this function we extract only the plaintext content
+    """
+    ret = []
+    for chunk in re_url.split(content):
+        if not chunk:
+            continue
+
+        if (cut_url_pattern and cut_url_pattern in chunk) or cut_all_urls:
+            if chunk.startswith('http:') or chunk.startswith('https:'):
+                continue
+
+        ret.append(chunk.strip('() '))
+    ret = ' '.join(ret)
+    logger.debug('Plaintext content from %s -> %s (exclude links: %s)', content, ret, cut_url_pattern)
     return ret

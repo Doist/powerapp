@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
+from requests import HTTPError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
@@ -94,9 +95,11 @@ def accept_webhook(request, integration_id):
 def _stop_channel(user_id, channel_id, resource_id):
     user = get_object_or_404(User, id=user_id)
     client = utils.get_authorized_client(user)
-    resp = utils.json_post(client, '/channels/stop',
-                           id=channel_id,
-                           resouceId=resource_id)
-    # FIXME: it doesn't work :/
-    print(resp)
+    try:
+        resp = utils.json_post(client, '/channels/stop',
+                               id=channel_id,
+                               resouceId=resource_id)
+    except HTTPError:
+        # FIXME: it doesn't work :/
+        pass
     return HttpResponse()

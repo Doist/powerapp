@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from powerapp.core.exceptions import return_or_raise
-from powerapp.sync_bridge.bridge import SyncAdapter, TASK_FIELDS, task
-
+from powerapp.sync_bridge.bridge import SyncAdapter, TASK_FIELDS, task, defined, \
+    undefined
 
 TODOIST_ESSENTIAL_FIELDS = TASK_FIELDS[::]
 TODOIST_ESSENTIAL_FIELDS.remove('tags')
@@ -23,23 +23,22 @@ class TodoistSyncAdapter(SyncAdapter):
         self.project_id = project_id
 
     def push_task(self, task_id, task, extra):
-        content = task.content
-        kwargs = {
-            'checked': task.checked,
-            'in_history': task.in_history,
-            'indent': task.indent,
-            'item_order': task.item_order,
-            'priority': task.priority,
-        }
-        if task.due_date and task.date_string:
-            kwargs.update(due_date=task.due_date, date_string=task.date_string)
+        todoist_task_fields = ['checked', 'in_history', 'indent', 'item_order',
+                               'priority', 'due_date', 'date_string', 'content']
+        task_dict = task._asdict()
+        kwargs = {}
+        for field_name in todoist_task_fields:
+            value = task_dict[field_name]
+            if value is not undefined:
+                kwargs[field_name] = value
 
         if task_id:
-            self.api.item_update(task_id, content=content, **kwargs)
+            self.api.item_update(task_id, **kwargs)
             return_or_raise(self.api.commit())
             return task_id, {}  # return task_id and extra
 
         else:
+            content = defined(kwargs.pop('content', 'New Task'), 'New Task')
             obj = self.api.items.add(content, self.project_id, **kwargs)
             return_or_raise(self.api.commit())
             return obj['id'], {}  # return task_id and extra
