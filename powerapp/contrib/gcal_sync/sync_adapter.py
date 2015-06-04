@@ -136,7 +136,7 @@ class GcalSyncAdapter(SyncAdapter):
 
         try:
             gcal_due_date = parse_date(data['start']['dateTime'])
-        except ValueError:
+        except (KeyError, ValueError):
             # an event without a due date (whole day event maybe). Skip
             return
 

@@ -66,11 +66,15 @@ def accept_webhook(request, integration_id):
     For more details see
     https://developers.google.com/google-apps/calendar/v3/push?hl=en_US#receiving-notifications
     """
-    channel_id = request.META['HTTP_X_GOOG_CHANNEL_ID']
-    resource_id = request.META['HTTP_X_GOOG_RESOURCE_ID']
-    resource_state = request.META['HTTP_X_GOOG_RESOURCE_STATE']
-    resource_uri = request.META['HTTP_X_GOOG_RESOURCE_URI']
-    token = request.META['HTTP_X_GOOG_CHANNEL_TOKEN']
+    try:
+        channel_id = request.META['HTTP_X_GOOG_CHANNEL_ID']
+        resource_id = request.META['HTTP_X_GOOG_RESOURCE_ID']
+        resource_state = request.META['HTTP_X_GOOG_RESOURCE_STATE']
+        resource_uri = request.META['HTTP_X_GOOG_RESOURCE_URI']
+        token = request.META['HTTP_X_GOOG_CHANNEL_TOKEN']
+    except KeyError:
+        # not a google request
+        return HttpResponse()
 
     try:
         token_data = utils.validate_webhook_token(token)

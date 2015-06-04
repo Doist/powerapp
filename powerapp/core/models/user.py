@@ -78,6 +78,12 @@ class User(AbstractBaseUser):
         Return pytz timezone object from User settings
         """
         tzname = self.api.user.get('timezone')
+        if tzname is None:
+            self.api.user.sync()
+            tzname = self.api.user.get('timezone')
+            if not tzname:
+                tzname = 'UTC'
+
         pytz_tzname = tzname_todoist_to_pytz(tzname)
         return pytz.timezone(pytz_tzname)
 
