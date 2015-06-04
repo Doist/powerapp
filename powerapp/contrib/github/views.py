@@ -12,6 +12,7 @@ from django.http import Http404, HttpResponse
 
 from powerapp.core import django_fields
 from powerapp.core.models.integration import Integration
+from powerapp.core.models import Service
 from powerapp.core import django_forms, generic_views
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import extend_qs
@@ -24,8 +25,6 @@ GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
 
 
 ACCESS_TOKEN_CLIENT = "github"
-
-
 SETTING_KEY_GITHUB_USER_ID = "github_user_id"
 
 
@@ -40,6 +39,9 @@ class EditIntegrationView(generic_views.EditIntegrationView):
     form = IntegrationForm
 
     def extra_template_context(self, request, integration):
+        if not integration:
+            return {}
+
         webhook_url = self.request.build_absolute_uri(
             reverse('github:webhook', kwargs={"integration_id": integration.id}))
 
@@ -50,6 +52,28 @@ class EditIntegrationView(generic_views.EditIntegrationView):
     def access_token_redirect(self, request):
         request.session['github_auth_redirect'] = request.path
         return redirect('github:authorize_github')
+
+
+    def get(self, request, integration_id=None):
+        """
+        Override "get" so that integration is saved upon activation
+        """
+        integration = self.get_integration(request, integration_id)
+
+        if not integration:
+            service = Service.objects.get(label=self.service_label)
+            integration = Integration(service_id=self.service_label,
+                                      name=service.app_config.verbose_name,
+                                      user=request.user)
+            integration.save()
+
+            redirect_uri = request.build_absolute_uri(
+                reverse('github:edit_integration', kwargs={"integration_id": integration.id}))
+
+            return redirect(redirect_uri)
+
+        return generic_views.EditIntegrationView.get(self, request, integration.id)
+
 
     def on_save(self, integration):
         if SETTING_KEY_GITHUB_USER_ID not in integration.settings:
@@ -75,7 +99,7 @@ def authorize_github(request):
     # TODO: better state generation, change scope
     auth_uri = extend_qs(GITHUB_AUTHORIZE_ENDPOINT,
                          client_id=settings.GITHUB_CLIENT_ID,
-                         scope="user",
+                         scope="user,repo",
                          redirect_uri=redirect_uri,
                          state="abdfasfafasd")
 
@@ -158,8 +182,19 @@ def webhook(request, *args, **kwargs):
             item = integration.api.add_item(item_content)
             mapping_record = GithubItemIssueMap(integration=integration,
                                                 issue_id=issue_data['id'],
+                                                issue_url=issue_data['url'],
                                                 task_id=item['id'])
             mapping_record.save()
+
+    # if event_payload["action"] == "closed":
+    #     with integration.api.autocommit():
+    #         item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
+    #                                                            issue_id=issue_data['id'])
+    #         if not item_issue_record:
+    #             return HttpResponse("ok")
+    #
+    #         # integration.api.item_update(item_issue_record.task_id)
+    #         # mapping_record.save()
 
     return HttpResponse("ok")
 
