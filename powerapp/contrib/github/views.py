@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import uuid
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
@@ -15,6 +16,7 @@ from powerapp.core.models.integration import Integration
 from powerapp.core.models import Service
 from powerapp.core import django_forms, generic_views
 from powerapp.core.models.oauth import OAuthToken
+from powerapp.core.exceptions import PowerAppError
 from powerapp.core.web_utils import extend_qs
 from powerapp.core.sync import StatelessTodoistAPI
 from .models import GithubItemIssueMap
@@ -26,6 +28,7 @@ GITHUB_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
 
 ACCESS_TOKEN_CLIENT = "github"
 SETTING_KEY_GITHUB_USER_ID = "github_user_id"
+OAUTH_STATE_SESSION_KEY = "github_oauth_state"
 
 
 class IntegrationForm(django_forms.IntegrationForm):
@@ -92,16 +95,18 @@ class EditIntegrationView(generic_views.EditIntegrationView):
         return generic_views.EditIntegrationView.on_save(self, integration)
 
 
+
 @login_required
 def authorize_github(request):
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
+    oauth_state_str = uuid.uuid4().__str__()
+    request.session[OAUTH_STATE_SESSION_KEY] = oauth_state_str
 
-    # TODO: better state generation, change scope
     auth_uri = extend_qs(GITHUB_AUTHORIZE_ENDPOINT,
                          client_id=settings.GITHUB_CLIENT_ID,
                          scope="user,repo",
                          redirect_uri=redirect_uri,
-                         state="abdfasfafasd")
+                         state=oauth_state_str)
 
     return render(request, 'github/authorize_github.html',
                   {'auth_uri': auth_uri})
@@ -109,8 +114,11 @@ def authorize_github(request):
 
 @login_required
 def authorize_github_done(request):
-    # TODO: Verify state
-    state = request.GET['state']
+    received_state = request.GET['state']
+    expected_state = request.session.pop(OAUTH_STATE_SESSION_KEY, None)
+
+    if not received_state == expected_state:
+        raise PowerAppError("Invalid state")
 
     authorization_code = request.GET['code']
     redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
