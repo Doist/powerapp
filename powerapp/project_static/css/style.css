@@ -8845,7 +8845,8 @@ html {
 .powerapp-right-menu a:hover {
   text-decoration: underline;
 }
-.powerapp-container {
+.powerapp-container,
+.powerapp-main-plain {
   max-width: 900px;
   margin: auto;
   padding: 0 40px;
@@ -8873,5 +8874,26 @@ html {
   .service-picture img {
     width: 50px !important;
     height: 50px !important;
+  }
+  .powerapp-dashboard-top {
+    display: none;
+  }
+}
+@media screen and (max-width: 385px) {
+  .service-picture img {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  .service-picture,
+  .service-description {
+    padding: 24px 10px 20px !important;
+  }
+  .top-action-button {
+    margin-right: 10px !important;
+  }
+}
+@media screen and (max-width: 355px) {
+  .powerapp-open_todoist {
+    display: none !important;
   }
 }

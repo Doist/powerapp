@@ -6,7 +6,7 @@
     <form method="post" action="{% url 'web_logout' %}" class="hide" id="logout-form">{% csrf_token %}</form>
 
     <ul class="powerapp-right-menu">
-        <li><a href="https://todoist.com" target="_blank">Open Todoist</a></li>
+        <li class="powerapp-open_todoist"><a href="https://todoist.com" target="_blank">Open Todoist</a></li>
         <li><a href="{% url 'web_logout' %}" id="logout-link">Logout</a></li>
     </ul>
 {% endblock %}
