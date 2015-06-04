@@ -4,6 +4,7 @@ Todoist-related utils
 """
 import re
 from collections import namedtuple
+from powerapp.core.exceptions import return_or_raise
 from powerapp.core.sync import UserTodoistAPI
 from logging import getLogger
 
@@ -30,17 +31,23 @@ def get_personal_project(integration, project_name, pid_field='project_id'):
 
     # Try to find a project by id
     project_id = settings.get(pid_field)
+
+    # it's a broken project, ignore it
+    if str(project_id).startswith('$'):
+        project_id = None
+
     if project_id:
         project = api.projects.get_by_id(project_id)
         if project:
             return project
 
     # Project is not found. Search by project name, or create a new one
-    projects = api.projects.all(filt=lambda p: p['name'] == project_name)
+    projects = api.projects.all(filt=lambda p: p['name'] == project_name and not str(p['id']).startswith('$'))
+
     project = projects[0] if projects else api.projects.add(project_name)
 
     # commit all changes and update settings
-    api.commit()
+    return_or_raise(api.commit())
     integration.update_settings(**{pid_field: project['id']})
     return project
 
