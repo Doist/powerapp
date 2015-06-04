@@ -170,12 +170,9 @@ def webhook(request, *args, **kwargs):
     event_payload = json.loads(
         request.body.decode(encoding='UTF-8'))
 
-    if not event_payload["action"] == "opened":
-        return HttpResponse("ok")
-
     issue_data = event_payload["issue"]
 
-    if (event_payload["action"] == "opened"
+    if ((event_payload["action"] == "opened" or event_payload["action"] == "reopened")
             and is_assignee(issue_data, github_user_id)):
         with integration.api.autocommit():
             item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
@@ -186,15 +183,16 @@ def webhook(request, *args, **kwargs):
                                                 task_id=item['id'])
             mapping_record.save()
 
-    # if event_payload["action"] == "closed":
-    #     with integration.api.autocommit():
-    #         item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
-    #                                                            issue_id=issue_data['id'])
-    #         if not item_issue_record:
-    #             return HttpResponse("ok")
-    #
-    #         # integration.api.item_update(item_issue_record.task_id)
-    #         # mapping_record.save()
+    if event_payload["action"] == "closed":
+        with integration.api.autocommit():
+            try:
+                item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
+                                                                   issue_id=issue_data['id'])
+            except GithubItemIssueMap.DoesNotExist:
+                return HttpResponse("ok")
+
+            integration.api.item_update(item_issue_record.task_id, checked=True, in_history=True)
+            item_issue_record.delete()
 
     return HttpResponse("ok")
 

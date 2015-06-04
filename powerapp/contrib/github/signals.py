@@ -28,6 +28,8 @@ def on_task_changed(sender, user=None, service=None, integration=None, obj=None,
             if resp.status_code != 200:
                 # TODO: LOG THE ERROR
                 print(resp.json())
+            else:
+                item_issue_record.delete()
 
     except GithubItemIssueMap.DoesNotExist:
         pass
