@@ -55,10 +55,12 @@ class SyncBridge(object):
 
         # find the mapping
         kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
-        try:
-            mapping = ItemMapping.objects.bridge_get(self, **kw)
-        except ItemMapping.DoesNotExist:
+
+        # if we found several mappings, we use the last one
+        mapping = ItemMapping.objects.bridge_filter(self, **kw).order_by('-id').first()
+        if not mapping:
             mapping = ItemMapping.objects.bridge_create(self, **kw)
+
         # make a task out of data
         source_extra = getattr(mapping, '%s_extra' % source_side)
         target_extra = getattr(mapping, '%s_extra' % target_side)
