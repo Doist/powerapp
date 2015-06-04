@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Synchronizes your Todoist tasks with your Github issues
+"""
 import environ
 from powerapp.core.apps import ServiceAppConfig
 

@@ -14,12 +14,15 @@
 
     <ol>
         <li>
-            In your Github repository setting, go to the "Webhooks & Services" section. Create a new webhook.
+            In your Github repository setting, go to the "Webhooks & Services" section, and create a new webhook.
         </li>
         <li>
             Fill in the "Payload URL" field with the following URL:
             <br/>
             <b>{{ extra_context.webhook_url }}</b>
+        </li>
+        <li>
+            Fill in the "Secret" field with the same secret string configured below.
         </li>
         <li>
             For the webhook event setting, select "Issues", and saving the setting to complete the setup.
