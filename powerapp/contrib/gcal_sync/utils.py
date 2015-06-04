@@ -11,6 +11,7 @@ from django.utils.crypto import salted_hmac, constant_time_compare
 from powerapp.core import oauth
 from . import oauth_impl
 from powerapp.core.exceptions import PowerAppError
+from powerapp.core.management.integration_utils import operation_limit
 from powerapp.core.web_utils import ensure_https
 from django.utils.six.moves.urllib import parse
 
@@ -109,6 +110,7 @@ def validate_webhook_token(string):
     return dict(parse.parse_qsl(qs))
 
 
+@operation_limit('last_sync')
 def sync_gcal(integration):
     """
     Sync Google Calendars with Todoist

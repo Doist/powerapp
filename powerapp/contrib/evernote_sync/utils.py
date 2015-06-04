@@ -11,6 +11,7 @@ from evernote.edam.notestore.ttypes import SyncChunkFilter
 from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
 from powerapp.core.exceptions import PowerAppInvalidTokenError
+from powerapp.core.management.integration_utils import operation_limit
 from powerapp.core.models.oauth import OAuthToken
 
 evernote_note_changed = Signal(providing_args=['integration', 'note'])
@@ -85,6 +86,7 @@ def format_note_content(content):
     """ % escape(content)
 
 
+@operation_limit('last_sync')
 def sync_evernote(integration):
     """
     Sync evernote project with Todoist
