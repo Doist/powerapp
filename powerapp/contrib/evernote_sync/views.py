@@ -9,6 +9,7 @@ from powerapp.core import generic_views
 from . import forms, utils, tasks
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
+from powerapp.core.web_utils import build_absolute_uri
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -23,7 +24,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 @login_required
 def authorize_evernote(request):
     client = utils.get_unauthorized_evernote_client()
-    callback_url = request.build_absolute_uri(reverse('evernote_sync:authorize_evernote_done'))
+    callback_url = build_absolute_uri(reverse('evernote_sync:authorize_evernote_done'))
     request_token = client.get_request_token(callback_url)
     request.session['evernote_request_token'] = request_token
     context = {'auth_uri': client.get_authorize_url(request_token)}

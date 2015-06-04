@@ -14,7 +14,6 @@ be defined.
 The callback function will be called from the `oauth2cb`
 
 """
-import datetime
 import uuid
 from logging import getLogger
 
@@ -26,7 +25,7 @@ from requests_oauthlib import OAuth2Session
 from django.utils.six.moves.urllib import parse
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.models.oauth import OAuthToken
-from powerapp.core.web_utils import extend_qs, ensure_https
+from powerapp.core.web_utils import extend_qs, build_absolute_uri
 
 oauth_clients = {}
 
@@ -152,10 +151,10 @@ class OAuthClient(object):
     def get_client_secret(self):
         return getattr(settings, self.client_secret, '').strip()
 
-    def get_oauth2cb_uri(self, request):
-        return ensure_https(request.build_absolute_uri(reverse('web_oauth2cb')))
+    def get_oauth2cb_uri(self):
+        return build_absolute_uri(reverse('web_oauth2cb'))
 
-    def get_authorize_url(self, request, **kwargs):
+    def get_authorize_url(self, **kwargs):
         """
         :param kwargs: extra params for authorize url which will overwrite
                        default params
@@ -167,11 +166,11 @@ class OAuthClient(object):
             'response_type': 'code',
         }
         if self.redirect_uri_required:
-            qs['redirect_uri'] = self.get_oauth2cb_uri(request)
+            qs['redirect_uri'] = self.get_oauth2cb_uri()
         qs.update(kwargs)
         return extend_qs(self.authorize_endpoint, **qs)
 
-    def exchange_code_for_token(self, request, code):
+    def exchange_code_for_token(self, code):
         post_data = {
             'client_id': self.get_client_id(),
             'client_secret': self.get_client_secret(),
@@ -179,7 +178,7 @@ class OAuthClient(object):
             'grant_type': 'authorization_code',
         }
         if self.redirect_uri_required:
-            post_data['redirect_uri'] = self.get_oauth2cb_uri(request)
+            post_data['redirect_uri'] = self.get_oauth2cb_uri()
         resp = requests.post(self.access_token_endpoint, data=post_data)
         logger.debug('Exchange OAuth code for token. Endpoint: %s, data: %s',
                      self.access_token_endpoint, post_data)

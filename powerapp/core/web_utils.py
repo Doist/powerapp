@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.utils.six.moves.urllib import parse
 from django.utils.encoding import force_bytes
+from django.conf import settings
 
 
 def extend_qs(base_url, **kwargs):
@@ -46,10 +47,14 @@ def convert_to_string(value):
     return force_bytes(value)
 
 
-def ensure_https(url):
+def build_absolute_uri(url, ensure_https=True):
     """
-    Make sure the URL starts with https
+    Build absolute URL from a relative one. If the URL is already absolute,
+    keep it as is
     """
-    parsed = list(parse.urlparse(url))
-    parsed[0] = 'https'
-    return parse.urlunparse(parsed)
+    absolute = parse.urljoin(settings.SITE_URL, url)
+    if ensure_https:
+        parsed = list(parse.urlparse(absolute))
+        parsed[0] = 'https'
+        absolute = parse.urlunparse(parsed)
+    return absolute

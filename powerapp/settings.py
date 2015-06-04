@@ -26,6 +26,9 @@ env = environ.Env(
 )
 env.read_env('.env')
 
+# Website URL
+SITE_URL = env('SITE_URL')
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # or "root('subdir')"
 BASE_DIR = root()

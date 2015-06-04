@@ -7,6 +7,9 @@
       "description": "A secret key for verifying the integrity of signed cookies.",
       "generator": "secret"
     },
+    "SITE_URL": {
+      "description": "Base URL of your websit"
+    },
     "TODOIST_CLIENT_ID": {
       "description": "Create your client at https://developer.todoist.com/appconsole.html and copy your personal client id from there"
     },

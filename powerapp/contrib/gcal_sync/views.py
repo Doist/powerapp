@@ -19,8 +19,7 @@ class IntegrationForm(django_forms.IntegrationForm):
 
     def post_save(self):
         if self.integration_created:
-            calendar = utils.get_or_create_todoist_calendar(self.integration)
-            utils.subscribe_to_todoist_calendar(self.request, self.integration, calendar)
+            return tasks.create_calendar.si(self.integration.id)
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -36,8 +35,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 @login_required
 def authorize_gcal(request):
     client = oauth.get_client_by_name(oauth_impl.OAUTH_CLIENT_NAME)
-    authorize_url = client.get_authorize_url(request,
-                                             access_type='offline',
+    authorize_url = client.get_authorize_url(access_type='offline',
                                              approval_prompt='force')
     client.set_state(request)
     context = {'authorize_url': authorize_url}
@@ -86,7 +84,8 @@ def accept_webhook(request, integration_id):
     try:
         integration = Integration.objects.get(id=integration_id)
     except Integration.DoesNotExist:
-        return tasks.stop_channel.delay(token_data['u'], channel_id, resource_id)
+        tasks.stop_channel.delay(token_data['u'], channel_id, resource_id)
+        return HttpResponse()
 
     tasks.sync_gcal.delay(integration.id)
     return HttpResponse()

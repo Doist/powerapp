@@ -4,17 +4,15 @@ Google Calendar utility functions
 """
 import json
 import uuid
-from requests import HTTPError
 from logging import getLogger
 from django.core.urlresolvers import reverse
 from django.dispatch.dispatcher import Signal
-from django.shortcuts import get_object_or_404
 from django.utils.crypto import salted_hmac, constant_time_compare
 from powerapp.core import oauth
 from . import oauth_impl
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.management.integration_utils import operation_limit
-from powerapp.core.web_utils import ensure_https
+from powerapp.core.web_utils import build_absolute_uri
 from django.utils.six.moves.urllib import parse
 
 
@@ -65,7 +63,7 @@ def get_or_create_todoist_calendar(integration):
     return calendar
 
 
-def subscribe_to_todoist_calendar(request, integration, calendar):
+def subscribe_to_todoist_calendar(integration, calendar):
     """
     Subscribe for all events from the calendar
 
@@ -79,9 +77,9 @@ def subscribe_to_todoist_calendar(request, integration, calendar):
 
     client = get_authorized_client(integration.user)
     channel_id = str(uuid.uuid4())
-    webhook_url = ensure_https(request.build_absolute_uri(
+    webhook_url = build_absolute_uri(
         reverse('gcal_sync:accept_webhook', args=(integration.id, ))
-    ))
+    )
     token = create_webhook_token(integration)
     resp = json_post(client, '/calendars/%s/events/watch' % calendar['id'],
                      id=channel_id, type='web_hook', address=webhook_url, token=token)

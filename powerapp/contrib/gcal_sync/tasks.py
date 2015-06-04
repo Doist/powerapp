@@ -8,6 +8,16 @@ from powerapp.core.models.user import User
 
 
 @app.task(ignore_result=True)
+def create_calendar(integration_id):
+    try:
+        integration = Integration.objects.get(id=integration_id)
+    except Integration.DoesNotExist:
+        return
+    calendar = utils.get_or_create_todoist_calendar(integration)
+    utils.subscribe_to_todoist_calendar(integration, calendar)
+
+
+@app.task(ignore_result=True)
 def sync_gcal(integration_id):
     try:
         integration = Integration.objects.get(id=integration_id)

@@ -20,7 +20,7 @@ from powerapp.core.models import Service
 from powerapp.core import django_forms, generic_views
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.exceptions import PowerAppError
-from powerapp.core.web_utils import extend_qs
+from powerapp.core.web_utils import extend_qs, build_absolute_uri
 from powerapp.core.sync import StatelessTodoistAPI
 from .models import GithubItemIssueMap
 
@@ -52,7 +52,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
         if not integration:
             return {}
 
-        webhook_url = self.request.build_absolute_uri(
+        webhook_url = build_absolute_uri(
             reverse('github:webhook', kwargs={"integration_id": integration.id}))
 
         return {
@@ -100,7 +100,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 
             integration.update_settings(**initial_integration_setting)
 
-            redirect_uri = request.build_absolute_uri(
+            redirect_uri = build_absolute_uri(
                 reverse('github:edit_integration', kwargs={"integration_id": integration.id}))
 
             return redirect(redirect_uri)
@@ -110,7 +110,7 @@ class EditIntegrationView(generic_views.EditIntegrationView):
 
 @login_required
 def authorize_github(request):
-    redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
+    redirect_uri = build_absolute_uri(reverse('github:authorize_github_done'))
     oauth_state_str = str(uuid.uuid4())
     request.session[OAUTH_STATE_SESSION_KEY] = oauth_state_str
 
@@ -133,7 +133,7 @@ def authorize_github_done(request):
         raise PowerAppError("Invalid state")
 
     authorization_code = request.GET['code']
-    redirect_uri = request.build_absolute_uri(reverse('github:authorize_github_done'))
+    redirect_uri = build_absolute_uri(reverse('github:authorize_github_done'))
 
     resp = requests.post(GITHUB_ACCESS_TOKEN_ENDPOINT, data={
         'client_id': settings.GITHUB_CLIENT_ID,

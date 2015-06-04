@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from django import forms
+from celery import chain
 from powerapp.core.models import Service, Integration
-from powerapp.core import sync, tasks
+from powerapp.core import  tasks
 
 
 class IntegrationForm(forms.Form):
@@ -73,10 +74,19 @@ class IntegrationForm(forms.Form):
         self.integration.name = integration_settings.pop('name')
         self.integration.settings = integration_settings
         self.integration.save()
-        self.post_save()
+
+        # post-save task may optionally return a Celery subtask, which will
+        # be executed before "initial_stateless_sync"
+        c = chain()
+
+        post_save_task = self.post_save()
+        if post_save_task:
+            c |= post_save_task
 
         # init stateless instances, we sync it and then we drop it
         if self.integration_created and self.integration.stateless:
-            tasks.initial_stateless_sync.delay(self.integration.id)
+            c |= tasks.initial_stateless_sync.si(self.integration.id)
 
+        # run the chain
+        c()
         return self.integration
