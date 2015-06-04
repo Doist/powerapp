@@ -18,6 +18,7 @@ install_requires = [
     'Django>=1.8.2',
     'django-environ',
     'django-picklefield',
+    'django-statsd-mozilla',
     'colorlog',
     'requests',
     'feedparser',

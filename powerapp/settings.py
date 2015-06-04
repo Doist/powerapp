@@ -16,6 +16,13 @@ env = environ.Env(
     GOOGLE_SITE_VERIFICATION=(str, ''),
     RAVEN_DSN=(str, None),
     REDIS_URL=(str, 'redis://'),
+    # statsd default settings
+    STATSD_CLIENT=(str, 'django_statsd.clients.null'),  # disabled by default
+    STATSD_MODEL_SIGNALS=(bool, False),
+    STATSD_CELERY_SIGNALS=(bool, False),
+    STATSD_HOST=(str, 'localhost'),
+    STATSD_PORT=(int, 8125),
+    STATSD_PREFIX=(str, 'powerapp'),
 )
 env.read_env('.env')
 
@@ -41,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_statsd',
     'powerapp.core',
     'powerapp.sync_bridge',
     'raven.contrib.django.raven_compat',
@@ -55,7 +63,8 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-
+    'django_statsd.middleware.GraphiteMiddleware',
+    'powerapp.core.statsd_middleware.GrafanaRequestTimingMiddleware',
 )
 
 LOGIN_URL = 'web_login'
@@ -118,6 +127,17 @@ REDIS_URL = env('REDIS_URL')
 BROKER_URL = '%s/0' % REDIS_URL
 CELERY_RESULT_BACKEND = '%s/1' % REDIS_URL
 CELERY_ACCEPT_CONTENT = ['pickle']
+
+# ==========================================================
+# Statsd settings
+# ==========================================================
+
+STATSD_CLIENT = env('STATSD_CLIENT')
+STATSD_MODEL_SIGNALS = env('STATSD_MODEL_SIGNALS')
+STATSD_CELERY_SIGNALS = env('STATSD_CELERY_SIGNALS')
+STATSD_HOST = env('STATSD_HOST')
+STATSD_PORT = env('STATSD_PORT')
+STATSD_PREFIX = env('STATSD_PREFIX')
 
 # ==========================================================
 # PowerApp settings
