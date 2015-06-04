@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import utils
 from requests import HTTPError
-from powerapp.celery import app
+from powerapp.celery_local import app
 from powerapp.contrib.gcal_sync.utils import get_authorized_client, json_post
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.user import User

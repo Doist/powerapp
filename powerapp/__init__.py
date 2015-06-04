@@ -1,1 +1,1 @@
-from .celery import app as celery_app
+from .celery_local import app as celery_app

@@ -1,5 +1,5 @@
 from . import utils
-from powerapp.celery import app
+from powerapp.celery_local import app
 from powerapp.core.models import Integration
 
 
