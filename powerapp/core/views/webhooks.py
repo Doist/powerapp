@@ -65,7 +65,9 @@ def request_valid(raw_data, signature):
 def handle_stateful_integrations(data):
     user_ids = {ev['user_id'] for ev in data}
     next_sync = now() + FAST_SYNC_INTERVAL
-    Integration.objects.filter(user_id__in=user_ids, stateless=False).update(api_next_sync=next_sync)
+    Integration.objects.filter(user_id__in=user_ids,
+                               stateless=False,
+                               service_enabled=True).update(api_next_sync=next_sync)
 
 
 def handle_stateless_integrations(data):
@@ -73,7 +75,8 @@ def handle_stateless_integrations(data):
 
     # 1. Get all integrations
     integrations = Integration.objects.filter(user_id__in=user_ids,
-                                              stateless=True).order_by('user_id')
+                                              stateless=True,
+                                              service_enabled=True).order_by('user_id')
 
     # 2. Group them by user id
     user_integrations = {}

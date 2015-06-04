@@ -62,7 +62,8 @@ class Command(NoArgsCommand):
         # the pool
         kwargs = {'resource_types': ['projects', 'items', 'notes']}
         ret = []
-        for i in Integration.objects.filter(stateless=False,
+        for i in Integration.objects.filter(service_enabled=True,
+                                            stateless=False,
                                             api_next_sync__lte=now()):
             ret.append(cron_task(i.api.sync, kwargs, '%s.api.sync()' % i))
         return ret

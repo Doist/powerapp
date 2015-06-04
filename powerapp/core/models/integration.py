@@ -28,14 +28,17 @@ class Integration(models.Model):
     api_last_sync = models.DateTimeField(default=MILLENIUM)
     api_next_sync = models.DateTimeField(default=MILLENIUM)
 
+    # enabled status (cache value from the "service" field)
+    service_enabled = models.BooleanField(default=True, editable=False)
+
     def __str__(self):
         return self.name
 
     class Meta:
         app_label = 'core'
         index_together = [
-            ['user', 'service'],
-            ['stateless', 'api_next_sync']
+            ['service_enabled', 'user', 'service'],
+            ['service_enabled', 'stateless', 'api_next_sync']
         ]
 
     def update_settings(self, **kwargs):

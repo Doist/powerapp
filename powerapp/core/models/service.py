@@ -29,6 +29,7 @@ class Service(models.Model):
     label = models.CharField('Service label', max_length=256, primary_key=True)
     name = models.CharField('Service name', max_length=256)
     path = models.CharField('Service path', max_length=1024)
+    enabled = models.BooleanField('Service enabled', default=True)
 
     class Meta:
         app_label = 'core'

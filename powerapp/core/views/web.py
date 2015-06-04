@@ -12,7 +12,8 @@ from powerapp.core import oauth
 
 @login_required
 def dashboard(request):
-    integrations = Integration.objects.filter(user=request.user)
+    integrations = Integration.objects.filter(user=request.user,
+                                              service_enabled=True)
     if not integrations:
         return redirect('web_services')
     return render(request, 'dashboard.html',  {
@@ -25,7 +26,7 @@ def dashboard(request):
 def services(request):
     return render(request, 'services.html', {
         'active': 'services',
-        'services': Service.objects.all()
+        'services': Service.objects.filter(enabled=True)
     })
 
 

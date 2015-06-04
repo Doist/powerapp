@@ -35,7 +35,7 @@ def sync():
     to_delete = []
     to_add = []
 
-    for integration in Integration.objects.prefetch_related('periodictask_set').all():
+    for integration in Integration.objects.prefetch_related('periodictask_set').filter(service_enabled=True):
         expected_tasks = serice_periodic_tasks[integration.service_id]
         actual_tasks = {t.name: t.id for t in integration.periodictask_set.all()}
 
