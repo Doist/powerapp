@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+from logging import getLogger
 from django.db import models
 from django.utils.timezone import now
-from powerapp.core.models.service import logger
+from powerapp.core.logging_utils import ctx
+
+
+logger = getLogger(__name__)
 
 
 class PeriodicTask(models.Model):
@@ -25,9 +29,10 @@ class PeriodicTask(models.Model):
             # unknown periodic task
             return
 
-        # 2. run the task itself, as being asked
-        logger.debug('Run periodic task %r', self.name)
-        task_fun.func(self.integration)
+        with ctx(user=self.integration.user, integration=self.integration):
+            # 2. run the task itself, as being asked
+            logger.debug('Run periodic task %r', self.name)
+            task_fun.func(self.integration)
 
         # 3. update the database
         self.next_run = now() + task_fun.delta

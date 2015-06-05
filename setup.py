@@ -19,6 +19,7 @@ install_requires = [
     'django-environ',
     'django-picklefield',
     'django-statsd-mozilla',
+    'graypy',
     'colorlog',
     'requests',
     'feedparser',

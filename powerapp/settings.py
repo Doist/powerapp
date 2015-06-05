@@ -23,6 +23,9 @@ env = environ.Env(
     STATSD_HOST=(str, 'localhost'),
     STATSD_PORT=(int, 8125),
     STATSD_PREFIX=(str, 'powerapp'),
+    # graylog default settings
+    GRAYLOG2_HOST=(str, None),
+    GRAYLOG2_PORT=(int, 12201),
 )
 env.read_env('.env')
 
@@ -67,14 +70,13 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django_statsd.middleware.GraphiteMiddleware',
+    'powerapp.core.logging_utils.RequestContextMiddleware',
     'powerapp.core.statsd_middleware.GrafanaRequestTimingMiddleware',
 )
 
 LOGIN_URL = 'web_login'
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ('powerapp.core.django_auth_backend.TodoistUserAuth', )
-
-
 
 ROOT_URLCONF = 'powerapp.urls'
 TEMPLATES = [
@@ -97,8 +99,8 @@ TEMPLATES = [
 
 
 STATICFILES_FINDERS = (
-  'django.contrib.staticfiles.finders.FileSystemFinder',
-  'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 )
 STATICFILES_DIRS = [root('powerapp/project_static')]
 
@@ -179,6 +181,12 @@ LOGGING = {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
         },
+        'context_filter': {
+            '()': 'powerapp.core.logging_utils.ContextFilter',
+            'fields': {
+                'project': 'powerapp',
+            },
+        },
     },
 
     # Log handlers: to console and to email (unless DEBUG=True)
@@ -198,7 +206,7 @@ LOGGING = {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
-        }
+        },
     },
 
     # Root logger
@@ -237,3 +245,13 @@ if env('RAVEN_DSN') is not None:
     RAVEN_CONFIG = {
         'dsn': env('RAVEN_DSN')
     }
+
+if env('GRAYLOG2_HOST') is not None:
+    LOGGING['handlers']['graypy'] = {
+        'level': 'DEBUG',
+        'class': 'graypy.GELFHandler',
+        'host': env('GRAYLOG2_HOST'),
+        'port': env('GRAYLOG2_PORT'),
+        'filters': ['context_filter'],
+    }
+    LOGGING['loggers']['powerapp']['handlers'].append('graypy')
