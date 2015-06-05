@@ -68,6 +68,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.security.SecurityMiddleware',
     'django_statsd.middleware.GraphiteMiddleware',
     'powerapp.core.statsd_middleware.GrafanaRequestTimingMiddleware',
+    'powerapp.core.add_integration_middleware.AddIntegrationMiddleware'
 )
 
 LOGIN_URL = 'web_login'
