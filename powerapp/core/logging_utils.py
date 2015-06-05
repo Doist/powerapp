@@ -97,3 +97,4 @@ class RequestContextMiddleware(object):
             'user_agent': request.META['HTTP_USER_AGENT'],
             'remote_addr': request.META['REMOTE_ADDR'],
         }
+        update_ctx(**fields)
