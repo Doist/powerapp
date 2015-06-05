@@ -70,6 +70,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django_statsd.middleware.GraphiteMiddleware',
+    'powerapp.core.logging_utils.RequestContextMiddleware',
     'powerapp.core.statsd_middleware.GrafanaRequestTimingMiddleware',
 )
 
@@ -180,8 +181,8 @@ LOGGING = {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
         },
-        'static_fields': {
-            '()': 'powerapp.core.logfilters.StaticFieldFilter',
+        'context_filter': {
+            '()': 'powerapp.core.logging_utils.ContextFilter',
             'fields': {
                 'project': 'powerapp',
             },
@@ -251,5 +252,6 @@ if env('GRAYLOG2_HOST') is not None:
         'class': 'graypy.GELFHandler',
         'host': env('GRAYLOG2_HOST'),
         'port': env('GRAYLOG2_PORT'),
+        'filters': ['context_filter'],
     }
     LOGGING['loggers']['powerapp']['handlers'].append('graypy')
