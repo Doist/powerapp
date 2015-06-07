@@ -40,6 +40,8 @@ class AppConfig(LoadModuleMixin, apps.AppConfig):
     verbose_name = 'PowerApp core application'
 
     def ready(self):
+        # import the submodule with cron tasks
+        self.load_module('cron')
         # import the submodule with signal handlers
         self.load_module('signals')
         # import the submodule with OAuth implementations

@@ -60,14 +60,6 @@ def sync():
         PeriodicTask.objects.filter(id__in=to_delete).delete()
 
 
-def run_pending():
-    """
-    Run all pending periodic tasks
-    """
-    for task in get_pending():
-        task.run()
-
-
 def get_pending():
     """ Iterator returning periodic tasks to be executed
 

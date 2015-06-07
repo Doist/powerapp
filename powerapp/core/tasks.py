@@ -7,6 +7,9 @@ from powerapp.core.logging_utils import ctx
 
 @app.task(ignore_result=True)
 def initial_stateless_sync(integration_id):
+    """
+    The sync command which is performed for "stateless integrations"
+    """
     try:
         integration = Integration.objects.get(pk=integration_id)
     except Integration.DoesNotExist:

@@ -11,7 +11,7 @@ from logging import getLogger
 from collections import namedtuple
 from django.utils.encoding import force_bytes, force_text
 from .models import ItemMapping
-
+from powerapp.core.redis_utils import get_redis
 
 logger = getLogger(__name__)
 
@@ -51,56 +51,57 @@ class SyncBridge(object):
         The function has to be called whenever a user creates or updates a
         task.
         """
-        source, target, source_side, target_side = self.find_direction(source)
+        with self.lock():
+            source, target, source_side, target_side = self.find_direction(source)
 
-        # find the mapping
-        kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
+            # find the mapping
+            kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
 
-        # if we found several mappings, we use the last one
-        mapping = ItemMapping.objects.bridge_filter(self, **kw).order_by('-id').first()
-        if not mapping:
-            mapping = ItemMapping.objects.bridge_create(self, **kw)
+            # if we found several mappings, we use the last one
+            mapping = ItemMapping.objects.bridge_filter(self, **kw).order_by('-id').first()
+            if not mapping:
+                mapping = ItemMapping.objects.bridge_create(self, **kw)
 
-        # make a task out of data
-        source_extra = getattr(mapping, '%s_extra' % source_side)
-        target_extra = getattr(mapping, '%s_extra' % target_side)
-        task = source.task_from_data(data, source_extra)
+            # make a task out of data
+            source_extra = getattr(mapping, '%s_extra' % source_side)
+            target_extra = getattr(mapping, '%s_extra' % target_side)
+            task = source.task_from_data(data, source_extra)
 
-        if task is None or is_task_undefined(task):
-            logger.debug('%s refuses to send %r (extra: %r)', source, data, source_extra)
-            return
+            if task is None or is_task_undefined(task):
+                logger.debug('%s refuses to send %r (extra: %r)', source, data, source_extra)
+                return
 
-        # calculate hashes
-        source_hash = get_hash(task, source.ESSENTIAL_FIELDS)
-        target_hash = get_hash(task, target.ESSENTIAL_FIELDS)
+            # calculate hashes
+            source_hash = get_hash(task, source.ESSENTIAL_FIELDS)
+            target_hash = get_hash(task, target.ESSENTIAL_FIELDS)
 
-        logger.debug('push task %s (%s) %s -> %s', task_id, source_hash,
-                     source, target)
-        logger.debug('... task: %s', task)
-        logger.debug('... extra: %s', source_extra)
+            logger.debug('push task %s (%s) %s -> %s', task_id, source_hash,
+                         source, target)
+            logger.debug('... task: %s', task)
+            logger.debug('... extra: %s', source_extra)
 
-        mapping_source_hash = getattr(mapping, '%s_hash' % source_side)
-        mapping_target_hash = getattr(mapping, '%s_hash' % target_side)
-        if mapping_source_hash == source_hash or mapping_target_hash == target_hash:
-            logger.debug('... hashes match, skip')
-            return
+            mapping_source_hash = getattr(mapping, '%s_hash' % source_side)
+            mapping_target_hash = getattr(mapping, '%s_hash' % target_side)
+            if mapping_source_hash == source_hash or mapping_target_hash == target_hash:
+                logger.debug('... hashes match, skip')
+                return
 
-        target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
+            target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
 
-        # push the task and get a new local id and extra data back
-        new_target_id, new_target_extra = target.push_task(target_id, task, target_extra)
+            # push the task and get a new local id and extra data back
+            new_target_id, new_target_extra = target.push_task(target_id, task, target_extra)
 
-        if new_target_id:
-            # save the updated version of the id and extra information
-            setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
-            setattr(mapping, '%s_extra' % target_side, new_target_extra)
-            # save hashes
-            setattr(mapping, '%s_hash' % source_side, source_hash)
-            setattr(mapping, '%s_hash' % target_side, target_hash)
-            mapping.save()
-        else:
-            # the receiver part is not interested in this task
-            mapping.delete()
+            if new_target_id:
+                # save the updated version of the id and extra information
+                setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
+                setattr(mapping, '%s_extra' % target_side, new_target_extra)
+                # save hashes
+                setattr(mapping, '%s_hash' % source_side, source_hash)
+                setattr(mapping, '%s_hash' % target_side, target_hash)
+                mapping.save()
+            else:
+                # the receiver part is not interested in this task
+                mapping.delete()
 
     def delete_task(self, source, task_id):
         """
@@ -112,26 +113,27 @@ class SyncBridge(object):
 
         The function has to be called whenever a user deletes a task
         """
-        source, target, source_side, target_side = self.find_direction(source)
+        with self.lock():
+            source, target, source_side, target_side = self.find_direction(source)
 
-        # find the mapping
-        kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
-        try:
-            mapping = ItemMapping.objects.bridge_get(self, **kw)
-        except ItemMapping.DoesNotExist:
-            # the task is not known to the bridge, ignore it
-            return
+            # find the mapping
+            kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
+            try:
+                mapping = ItemMapping.objects.bridge_get(self, **kw)
+            except ItemMapping.DoesNotExist:
+                # the task is not known to the bridge, ignore it
+                return
 
-        # push the delete command
-        target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
-        target_extra = getattr(mapping, '%s_extra' % target_side)
-        if target_id is None:
-            return
+            # push the delete command
+            target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
+            target_extra = getattr(mapping, '%s_extra' % target_side)
+            if target_id is None:
+                return
 
-        target.delete_task(target_id, target_extra)
+            target.delete_task(target_id, target_extra)
 
-        # clean up all traces of the object
-        mapping.delete()
+            # clean up all traces of the object
+            mapping.delete()
 
     def find_direction(self, source):
         if source == self.left:
@@ -139,6 +141,17 @@ class SyncBridge(object):
         elif source == self.right:
             return self.right, self.left, 'right', 'left'
         raise RuntimeError("Unknown source %r" % source)
+
+    def lock(self):
+        """
+        Internal function returning a "global redis lock" to make sure we
+        perform only one sync operation at a time.
+        """
+        lock_name = 'sync-bridge-%s-%s' % (self.integration.id, self.name)
+        lock_timeout = 60 * 5  # no more than 5 mins per sync operation
+        blocking_timeout = 30  # no more than 30 seconds waiting for the lock
+        return get_redis().lock(lock_name, timeout=lock_timeout,
+                                blocking_timeout=blocking_timeout)
 
     def __str__(self):
         return self.name

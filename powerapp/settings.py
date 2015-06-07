@@ -5,6 +5,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 import environ
+from datetime import timedelta
 from powerapp.discovery import app_discovery
 
 root = environ.Path(__file__) - 2
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_statsd',
+    'djcelery',
     'powerapp.core',
     'powerapp.sync_bridge',
     'raven.contrib.django.raven_compat',
@@ -112,6 +114,10 @@ DATABASES = {
 }
 
 
+CACHES = {
+    'default': env.cache('REDIS_URL'),
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
 LANGUAGE_CODE = 'en-us'
@@ -132,6 +138,19 @@ REDIS_URL = env('REDIS_URL')
 BROKER_URL = '%s/0' % REDIS_URL
 CELERY_RESULT_BACKEND = '%s/1' % REDIS_URL
 CELERY_ACCEPT_CONTENT = ['pickle']
+CELERY_IGNORE_RESULT = True
+
+CELERYBEAT_SCHEDULE = {
+    'schedule_sync_tasks': {
+        'task': 'powerapp.core.cron.schedule_sync_tasks',
+        'schedule': timedelta(minutes=2),
+    },
+    'schedule_cron_tasks': {
+        'task': 'powerapp.core.cron.schedule_cron_tasks',
+        'schedule': timedelta(minutes=2),
+    },
+}
+CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
 
 # ==========================================================
 # Statsd settings
