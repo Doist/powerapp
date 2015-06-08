@@ -165,15 +165,15 @@ def is_assignee(issue_event, github_user_id):
     return issue_event['assignee']['id'] == github_user_id
 
 
-def create_task_from_issue(integration, issue_data):
+def create_task_from_github_data(integration, github_data, github_data_type):
     with integration.api.autocommit():
-        item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
+        item_content = "%s (%s)" % (github_data["html_url"], github_data["title"])
         target_project = integration.settings[SETTING_KEY_PROJECT]
         item = integration.api.add_item(item_content, project_id=target_project)
         mapping_record = GithubDataMap(integration=integration,
-                                       github_data_type="issue",
-                                       github_data_id=issue_data['id'],
-                                       github_data_url=issue_data['url'],
+                                       github_data_type=github_data_type,
+                                       github_data_id=github_data['id'],
+                                       github_data_url=github_data['url'],
                                        todoist_task_id=item['id'])
         mapping_record.save()
 
@@ -194,7 +194,7 @@ def handle_issue_event(request, integration, github_user_id):
             item_issue_record.save()
             # item should already existed. Do nothing now
         except GithubDataMap.DoesNotExist:
-            create_task_from_issue(integration, issue_data)
+            create_task_from_github_data(integration, issue_data, "issue")
 
     if event_payload["action"] == "closed":
         with integration.api.autocommit():
@@ -213,36 +213,33 @@ def handle_issue_event(request, integration, github_user_id):
 
 
 def handle_pull_request(request, integration, github_user_id):
-    # event_payload = json.loads(force_text(request.body))
-    # pull_request_data = event_payload["pull_request"]
-    #
-    # # NOTE: Here we purposely ignore "opened" event type because when a
-    # # pull request is open and assigned, two webhook event request (opened, assigned) are sent
-    #
-    # print("EVENT type:", event_payload["action"])
-    #
-    # if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
-    #     and is_assignee(pull_request_data, github_user_id)):
-    #     try:
-    #         item_issue_record = GithubDataMap.objects.get(integration=integration,
-    #                                                            github_data_id=pull_request_data['id'])
-    #         item_issue_record.save()
-    #         # item should already existed. Do nothing now
-    #     except GithubDataMap.DoesNotExist:
-    #         create_task_from_issue(integration, pull_request_data)
-    #
-    # if event_payload["action"] == "closed":
-    #     with integration.api.autocommit():
-    #         try:
-    #             item_issue_record = GithubDataMap.objects.get(integration=integration,
-    #                                                                github_data_id=pull_request_data['id'])
-    #         except GithubDataMap.DoesNotExist:
-    #             return HttpResponse("ok")
-    #
-    #         integration.api.item_update(item_issue_record.todoist_task_id,
-    #                                     checked=True,
-    #                                     in_history=True)
-    #         item_issue_record.delete()
+    event_payload = json.loads(force_text(request.body))
+    pull_request_data = event_payload["pull_request"]
+
+    # NOTE: Here we purposely ignore "opened" event type because when a
+    # pull request is open and assigned, two webhook event request (opened, assigned) are sent
+    if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
+        and is_assignee(pull_request_data, github_user_id)):
+        try:
+            item_issue_record = GithubDataMap.objects.get(integration=integration,
+                                                          github_data_id=pull_request_data['id'])
+            item_issue_record.save()
+            # item should already existed. Do nothing now
+        except GithubDataMap.DoesNotExist:
+            create_task_from_github_data(integration, pull_request_data, "pull_request")
+
+    if event_payload["action"] == "closed":
+        with integration.api.autocommit():
+            try:
+                item_issue_record = GithubDataMap.objects.get(integration=integration,
+                                                              github_data_id=pull_request_data['id'])
+            except GithubDataMap.DoesNotExist:
+                return HttpResponse("ok")
+
+            integration.api.item_update(item_issue_record.todoist_task_id,
+                                        checked=True,
+                                        in_history=True)
+            item_issue_record.delete()
 
     return HttpResponse("ok")
 

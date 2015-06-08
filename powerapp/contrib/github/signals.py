@@ -13,23 +13,28 @@ logger = getLogger(__name__)
 
 @receiver(AppConfig.signals.todoist_task_updated)
 def on_task_changed(sender, user=None, service=None, integration=None, obj=None, **kwargs):
+    if not obj.data.get("checked"):
+        return
+
     try:
         item_issue_record = GithubDataMap.objects.get(integration=integration,
                                                       todoist_task_id=obj['id'])
-
-        if obj.data.get("checked"):
-            access_token = OAuthToken.objects.get(user=integration.user, client=ACCESS_TOKEN_CLIENT)
-
-            resp = requests.patch(item_issue_record.github_data_url,
-                                  params={'access_token': access_token.access_token},
-                                  json={'state': "closed"},
-                                  headers={'Accept': 'application/json'})
-
-            if resp.status_code != 200:
-                # TODO: LOG THE ERROR
-                print(resp.json())
-            else:
-                item_issue_record.delete()
-
     except GithubDataMap.DoesNotExist:
-        pass
+        return
+
+    if item_issue_record.github_data_type == "issue":
+        access_token = OAuthToken.objects.get(user=integration.user, client=ACCESS_TOKEN_CLIENT)
+
+        resp = requests.patch(item_issue_record.github_data_url,
+                              params={'access_token': access_token.access_token},
+                              json={'state': "closed"},
+                              headers={'Accept': 'application/json'})
+
+        if resp.status_code != 200:
+            # TODO: LOG THE ERROR
+            print(resp.json())
+        else:
+            item_issue_record.delete()
+
+    if item_issue_record.github_data_type == "pull_request":
+        item_issue_record.delete()
