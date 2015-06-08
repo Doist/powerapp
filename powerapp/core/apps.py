@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import datetime
 from collections import namedtuple
 from importlib import import_module
 from logging import getLogger
@@ -123,8 +124,11 @@ class ServiceAppConfig(with_metaclass(ServiceAppConfigMeta, LoadModuleMixin, app
     def periodic_task(cls, delta, name=None):
         """
         A decorator to add a periodic task. Decorated function has to accept
-        two arguments: user and integration objets
+        two arguments: user and integration object
         """
+        if isinstance(delta, int):
+            delta = datetime.timedelta(seconds=delta)
+
         def decorator(func):
             registry_name = name or '%s.%s' % (func.__module__, func.__name__)
             cls.periodic_tasks[registry_name] = PeriodicTaskFun(func, delta, registry_name)

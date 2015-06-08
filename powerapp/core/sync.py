@@ -169,8 +169,7 @@ class StatefulTodoistAPI(TodoistAPI):
 
         if kwargs.pop('save_state', True):
             self.integration.api_state = self.serialize()
-            self.integration.api_last_sync = now()
-            self.integration.save(update_fields=['api_state', 'api_last_sync'])
+            self.integration.save(update_fields=['api_state'])
 
         self.emit_sync_signals(current_state, new_state)
         return new_state

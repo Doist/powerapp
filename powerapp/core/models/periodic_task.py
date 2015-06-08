@@ -20,20 +20,35 @@ class PeriodicTask(models.Model):
     def __str__(self):
         return self.name
 
+    def schedule_forward(self):
+        task_fun = self.get_task_fun()
+        if not task_fun:
+            self.delete()
+            return
+
+        self.next_run = now() + task_fun.delta
+        self.save()
+
     def run(self):
-        # 1. find itself in a service
-        app_config = self.integration.service.app_config
-        try:
-            task_fun = app_config.periodic_tasks[self.name]
-        except KeyError:
-            # unknown periodic task
+        # find the task function object
+        task_fun = self.get_task_fun()
+        if not task_fun:
+            # unknown periodic task, destroy itself
+            self.delete()
             return
 
         with ctx(user=self.integration.user, integration=self.integration):
-            # 2. run the task itself, as being asked
+            # 2. run the task as being asked
             logger.debug('Run periodic task %r', self.name)
             task_fun.func(self.integration)
 
-        # 3. update the database
-        self.next_run = now() + task_fun.delta
-        self.save()
+    def get_task_fun(self):
+        """
+        Helper function returning PeriodicTaskFun object, associated with
+        this task. Return None if nothing is found.
+        """
+        app_config = self.integration.service.app_config
+        try:
+            return app_config.periodic_tasks[self.name]
+        except KeyError:
+            pass
