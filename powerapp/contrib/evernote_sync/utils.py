@@ -96,10 +96,10 @@ def sync_evernote(integration):
     """
     lock_key = 'utils-sync-evernote-%s' % integration.id
     lock_timeout = 5 * 60
-    waiting_timeout = 60
+    blocking_timeout = 60
 
     with get_redis().lock(lock_key, timeout=lock_timeout,
-                          waiting_timeout=waiting_timeout):
+                          blocking_timeout=blocking_timeout):
         local_sync_state, _ = EvernoteSyncState.objects.get_or_create(integration=integration)
 
         last_update_count, last_sync_time = _do_sync(integration,
