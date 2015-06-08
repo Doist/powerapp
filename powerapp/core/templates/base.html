@@ -9,6 +9,7 @@
     <script>
         var django_messages = {{ messages|to_json }}
     </script>
+    <link rel="icon" sizes="192x192" href="{% static 'img/todoist_256.png' %}">
     <meta name="google-site-verification" content="{{ google_site_verification }}" />
     {% block extra_css %} {% endblock %}
 </head>
