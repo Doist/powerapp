@@ -47,7 +47,7 @@ def convert_to_string(value):
     return force_bytes(value)
 
 
-def build_absolute_uri(relative_url, ensure_https=True):
+def build_absolute_uri(relative_url):
     """
     Build absolute URL from a relative one. If the URL is already absolute,
     keep it as is
