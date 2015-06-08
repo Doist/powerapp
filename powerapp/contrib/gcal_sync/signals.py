@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import datetime
 from logging import getLogger
-from django.conf import settings
 from django.dispatch.dispatcher import receiver
 from .apps import AppConfig
 from powerapp.contrib.gcal_sync.sync_adapter import GcalSyncAdapter
@@ -46,11 +44,3 @@ def on_gcal_event_deleted(sender, integration=None, event_id=None, **kwargs):
     bridge = sync_adapter.get_bridge_by_event_id(integration, event_id)
     # we don't delete task, but instead we mark the task as "checked"
     bridge.push_task(bridge.right, event_id, task(checked=True, in_history=True))
-
-
-@AppConfig.periodic_task(datetime.timedelta(minutes=1 if settings.DEBUG else 60))
-def sync_gcal(integration):
-    """
-    Sync our Google Calendar tasks periodically in case webhooks don't work
-    """
-    utils.sync_gcal(integration)

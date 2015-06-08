@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 from powerapp.core import generic_views, oauth, django_forms
 from . import utils, oauth_impl, tasks
 from powerapp.core.exceptions import PowerAppError
+from powerapp.core.integration_utils import schedule_with_rate_limit
 from powerapp.core.models.integration import Integration
 
 logger = getLogger(__name__)
@@ -45,12 +46,11 @@ def authorize_gcal(request):
 @login_required
 @require_POST
 def sync_now(request, integration_id):
-    integration = get_object_or_404(Integration,
-                                    id=integration_id,
-                                    user_id=request.user.id)
-    tasks.sync_gcal.delay(integration.id)
+    get_object_or_404(Integration, id=integration_id, user_id=request.user.id)
+    subtask = tasks.sync_gcal.s(integration_id)
+    schedule_with_rate_limit(integration_id, 'last_sync', subtask)
     messages.info(request, 'Synchronization with Google Calendar scheduled')
-    return redirect('gcal_sync:edit_integration', integration.id)
+    return redirect('gcal_sync:edit_integration', integration_id)
 
 
 @csrf_exempt
@@ -81,11 +81,10 @@ def accept_webhook(request, integration_id):
                  'channel_id=%s, token=%s, resource: (id=%s, state=%s, uri=%s)',
                  channel_id, token, resource_id, resource_state, resource_uri)
 
-    try:
-        integration = Integration.objects.get(id=integration_id)
-    except Integration.DoesNotExist:
+    if Integration.objects.filter(id=integration_id).exists():
+        subtask = tasks.sync_gcal.s(integration_id)
+        schedule_with_rate_limit(integration_id, 'last_sync', subtask)
+    else:
         tasks.stop_channel.delay(token_data['u'], channel_id, resource_id)
-        return HttpResponse()
 
-    tasks.sync_gcal.delay(integration.id)
     return HttpResponse()

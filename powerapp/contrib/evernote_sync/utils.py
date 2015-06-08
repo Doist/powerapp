@@ -11,8 +11,8 @@ from evernote.edam.notestore.ttypes import SyncChunkFilter
 from powerapp.contrib.evernote_sync.models import EvernoteSyncState, \
     EvernoteAccountCache
 from powerapp.core.exceptions import PowerAppInvalidTokenError
-from powerapp.core.management.integration_utils import operation_limit
 from powerapp.core.models.oauth import OAuthToken
+from powerapp.core.redis_utils import get_redis
 
 evernote_note_changed = Signal(providing_args=['integration', 'note'])
 evernote_note_deleted = Signal(providing_args=['integration', 'guid'])
@@ -86,7 +86,6 @@ def format_note_content(content):
     """ % escape(content)
 
 
-@operation_limit('last_sync')
 def sync_evernote(integration):
     """
     Sync evernote project with Todoist
@@ -95,15 +94,21 @@ def sync_evernote(integration):
     `evernote_note_changed` and `evernote_note_deleted` events (handled in
     signals.py). It keeps the "last sync" state in the EvernoteSyncState object
     """
-    local_sync_state, _ = EvernoteSyncState.objects.get_or_create(integration=integration)
+    lock_key = 'utils-sync-evernote-%s' % integration.id
+    lock_timeout = 5 * 60
+    waiting_timeout = 60
 
-    last_update_count, last_sync_time = _do_sync(integration,
-                                                 local_sync_state.last_update_count,
-                                                 local_sync_state.last_sync_time)
+    with get_redis().lock(lock_key, timeout=lock_timeout,
+                          waiting_timeout=waiting_timeout):
+        local_sync_state, _ = EvernoteSyncState.objects.get_or_create(integration=integration)
 
-    local_sync_state.last_update_count = last_update_count
-    local_sync_state.last_sync_time = last_sync_time
-    local_sync_state.save()
+        last_update_count, last_sync_time = _do_sync(integration,
+                                                     local_sync_state.last_update_count,
+                                                     local_sync_state.last_sync_time)
+
+        local_sync_state.last_update_count = last_update_count
+        local_sync_state.last_sync_time = last_sync_time
+        local_sync_state.save()
 
 
 def sync_evernote_projects(integration, notebook_guids):
