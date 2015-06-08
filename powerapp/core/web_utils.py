@@ -47,14 +47,9 @@ def convert_to_string(value):
     return force_bytes(value)
 
 
-def build_absolute_uri(url, ensure_https=True):
+def build_absolute_uri(relative_url, ensure_https=True):
     """
     Build absolute URL from a relative one. If the URL is already absolute,
     keep it as is
     """
-    absolute = parse.urljoin(settings.SITE_URL, url)
-    if ensure_https:
-        parsed = list(parse.urlparse(absolute))
-        parsed[0] = 'https'
-        absolute = parse.urlunparse(parsed)
-    return absolute
+    return parse.urljoin(settings.SITE_URL, relative_url)
