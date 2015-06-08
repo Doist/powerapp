@@ -13,7 +13,7 @@ def initial_stateless_sync(integration_id):
     try:
         integration = Integration.objects.get(pk=integration_id)
     except Integration.DoesNotExist:
-        pass
+        return
     api = sync.StatefulTodoistAPI.create(integration)
     with ctx(user=integration.user, integration=integration):
         api.sync(resource_types=['projects', 'items', 'notes'],
