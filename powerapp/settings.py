@@ -213,7 +213,7 @@ LOGGING = {
     # just easier to handle callbacks
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'colored'
         },
