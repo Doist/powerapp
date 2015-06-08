@@ -22,7 +22,8 @@ from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.web_utils import extend_qs, build_absolute_uri
 from powerapp.core.sync import StatelessTodoistAPI
-from .models import GithubItemIssueMap
+from .models import GithubDataMap
+
 
 
 GITHUB_AUTHORIZE_ENDPOINT = 'https://github.com/login/oauth/authorize'
@@ -169,11 +170,81 @@ def create_task_from_issue(integration, issue_data):
         item_content = "%s (%s)" % (issue_data["html_url"], issue_data["title"])
         target_project = integration.settings[SETTING_KEY_PROJECT]
         item = integration.api.add_item(item_content, project_id=target_project)
-        mapping_record = GithubItemIssueMap(integration=integration,
-                                            issue_id=issue_data['id'],
-                                            issue_url=issue_data['url'],
-                                            task_id=item['id'])
+        mapping_record = GithubDataMap(integration=integration,
+                                       github_data_type="issue",
+                                       github_data_id=issue_data['id'],
+                                       github_data_url=issue_data['url'],
+                                       todoist_task_id=item['id'])
         mapping_record.save()
+
+
+
+def handle_issue_event(request, integration, github_user_id):
+    event_payload = json.loads(force_text(request.body))
+    issue_data = event_payload["issue"]
+
+    # NOTE: Here we purposely ignore "opened" event type because when a
+    # issue is open and assigned, two webhook event request (opened, assigned) are sent
+
+    if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
+        and is_assignee(issue_data, github_user_id)):
+        try:
+            item_issue_record = GithubDataMap.objects.get(integration=integration,
+                                                          github_data_id=issue_data['id'])
+            item_issue_record.save()
+            # item should already existed. Do nothing now
+        except GithubDataMap.DoesNotExist:
+            create_task_from_issue(integration, issue_data)
+
+    if event_payload["action"] == "closed":
+        with integration.api.autocommit():
+            try:
+                item_issue_record = GithubDataMap.objects.get(integration=integration,
+                                                              github_data_id=issue_data['id'])
+            except GithubDataMap.DoesNotExist:
+                return HttpResponse("ok")
+
+            integration.api.item_update(item_issue_record.todoist_task_id,
+                                        checked=True,
+                                        in_history=True)
+            item_issue_record.delete()
+
+    return HttpResponse("ok")
+
+
+def handle_pull_request(request, integration, github_user_id):
+    # event_payload = json.loads(force_text(request.body))
+    # pull_request_data = event_payload["pull_request"]
+    #
+    # # NOTE: Here we purposely ignore "opened" event type because when a
+    # # pull request is open and assigned, two webhook event request (opened, assigned) are sent
+    #
+    # print("EVENT type:", event_payload["action"])
+    #
+    # if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
+    #     and is_assignee(pull_request_data, github_user_id)):
+    #     try:
+    #         item_issue_record = GithubDataMap.objects.get(integration=integration,
+    #                                                            github_data_id=pull_request_data['id'])
+    #         item_issue_record.save()
+    #         # item should already existed. Do nothing now
+    #     except GithubDataMap.DoesNotExist:
+    #         create_task_from_issue(integration, pull_request_data)
+    #
+    # if event_payload["action"] == "closed":
+    #     with integration.api.autocommit():
+    #         try:
+    #             item_issue_record = GithubDataMap.objects.get(integration=integration,
+    #                                                                github_data_id=pull_request_data['id'])
+    #         except GithubDataMap.DoesNotExist:
+    #             return HttpResponse("ok")
+    #
+    #         integration.api.item_update(item_issue_record.todoist_task_id,
+    #                                     checked=True,
+    #                                     in_history=True)
+    #         item_issue_record.delete()
+
+    return HttpResponse("ok")
 
 
 @csrf_exempt
@@ -182,10 +253,6 @@ def webhook(request, integration_id):
     assert isinstance(integration.api, StatelessTodoistAPI)  # IDE hint
     github_user_id = integration.settings[SETTING_KEY_GITHUB_USER_ID]
 
-    # ignore everything which is not an issue event
-    if not request.META.get("HTTP_X_GITHUB_EVENT") == "issues":
-        return HttpResponse()
-
     # payload verification
     received_hmac = request.META.get("HTTP_X_HUB_SIGNATURE")
     hmac_key = integration.settings['webhook_secret']
@@ -193,34 +260,13 @@ def webhook(request, integration_id):
     if received_hmac != ('sha1=' + actual_hmac):
         raise Http404("")
 
-    event_payload = json.loads(force_text(request.body))
-    issue_data = event_payload["issue"]
+    event_type = request.META.get("HTTP_X_GITHUB_EVENT")
 
+    if event_type == "issues":
+        return handle_issue_event(request, integration, github_user_id)
 
-    # NOTE: Here we purposely ignore "opened" event type because when a
-    # issue is open and assigned, two webhook event request (opened, assigned) are sent
+    elif event_type == "pull_request":
+        return handle_pull_request(request, integration, github_user_id)
+    else:
+        return HttpResponse("ok")
 
-    if ((event_payload["action"] == "assigned" or event_payload["action"] == "reopened")
-            and is_assignee(issue_data, github_user_id)):
-        try:
-            item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
-                                                               issue_id=issue_data['id'])
-            item_issue_record.save()
-            # item should already existed. Do nothing now
-        except GithubItemIssueMap.DoesNotExist:
-            create_task_from_issue(integration, issue_data)
-
-    if event_payload["action"] == "closed":
-        with integration.api.autocommit():
-            try:
-                item_issue_record = GithubItemIssueMap.objects.get(integration=integration,
-                                                                   issue_id=issue_data['id'])
-            except GithubItemIssueMap.DoesNotExist:
-                return HttpResponse("ok")
-
-            integration.api.item_update(item_issue_record.task_id,
-                                        checked=True,
-                                        in_history=True)
-            item_issue_record.delete()
-
-    return HttpResponse("ok")
