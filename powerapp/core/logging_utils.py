@@ -63,7 +63,7 @@ class ContextFilter(object):
             return {key: value.isoformat()}
 
         if hasattr(value, '__log__') and callable(value.__log__):
-            return {'%s_%s' % (key, k): v for k, v in value.__log__()}
+            return {'%s_%s' % (key, k): v for k, v in value.__log__().items()}
 
         return {key: force_text(value)}
 
