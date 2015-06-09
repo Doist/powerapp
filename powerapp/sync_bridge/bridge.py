@@ -54,19 +54,13 @@ class SyncBridge(object):
         with self.lock():
 
             source, target, source_side, target_side = self.find_direction(source)
-
-            # find the mapping
-            kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
-
-            # if we found several mappings, we use the last one
-            mapping = ItemMapping.objects.bridge_filter(self, **kw).order_by('-id').first()
+            mapping = self.get_mapping_by_task_id(source_side, task_id)
             if not mapping:
-                mapping = ItemMapping.objects.bridge_create(self, **kw)
+                mapping = self.create_mapping_by_task_id(source_side, task_id)
 
-
-            # make a task out of data
-            source_extra = getattr(mapping, '%s_extra' % source_side)
-            target_extra = getattr(mapping, '%s_extra' % target_side)
+            # create a new task from the data
+            source_extra = mapping.side(source_side).extra
+            target_extra = mapping.side(target_side).extra
             task = source.task_from_data(data, source_extra)
 
             if task is None or is_task_undefined(task):
@@ -79,8 +73,8 @@ class SyncBridge(object):
             logging_extra = {'source': source, 'target': target,
                              'mapping': mapping, 'task': task}
 
-            mapping_source_hash = getattr(mapping, '%s_hash' % source_side)
-            mapping_target_hash = getattr(mapping, '%s_hash' % target_side)
+            mapping_source_hash = mapping.side(source_side).hash
+            mapping_target_hash = mapping.side(target_side).hash
             if mapping_source_hash == source_hash or mapping_target_hash == target_hash:
                 logger.debug('%s refuses to send a task %s (hashes match)',
                              source, task_id, extra=logging_extra)
@@ -88,18 +82,18 @@ class SyncBridge(object):
 
             logger.debug('%s pushes a task %s', source, task_id,
                          extra=logging_extra)
-            target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
+            target_id = mapping.side(target_side).id  # -> mapping.right_id, for example
 
             # push the task and get a new local id and extra data back
             new_target_id, new_target_extra = target.push_task(target_id, task, target_extra)
 
             if new_target_id:
                 # save the updated version of the id and extra information
-                setattr(mapping, '%s_id' % target_side, force_text(new_target_id))
-                setattr(mapping, '%s_extra' % target_side, new_target_extra)
+                mapping.side(target_side).id = force_text(new_target_id)
+                mapping.side(target_side).extra = new_target_extra
                 # save hashes
-                setattr(mapping, '%s_hash' % source_side, source_hash)
-                setattr(mapping, '%s_hash' % target_side, target_hash)
+                mapping.side(source_side).hash = source_hash
+                mapping.side(target_side).hash = target_hash
                 mapping.save()
             else:
                 # the receiver part is not interested in this task
@@ -117,18 +111,14 @@ class SyncBridge(object):
         """
         with self.lock():
             source, target, source_side, target_side = self.find_direction(source)
-
-            # find the mapping
-            kw = {'%s_id' % source_side: task_id}  # i.e. left_id: 15
-            try:
-                mapping = ItemMapping.objects.bridge_get(self, **kw)
-            except ItemMapping.DoesNotExist:
+            mapping = self.get_mapping_by_task_id(source_side, task_id)
+            if not mapping:
                 # the task is not known to the bridge, ignore it
                 return
 
             # push the delete command
-            target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
-            target_extra = getattr(mapping, '%s_extra' % target_side)
+            target_id = mapping.side(target_side).id  # -> mapping.right_id, for example
+            target_extra = mapping.side(target_side).extra
             if target_id is None:
                 return
 
@@ -142,12 +132,59 @@ class SyncBridge(object):
             # clean up all traces of the object
             mapping.delete()
 
+    def complete_task(self, source, task_id, delete_mapping=True):
+        """
+        Complete a task. This method is never called by Todoist Sync Adapter,
+        instead, it's used by other adapters to change the Todoist task state.
+
+        `delete_mapping` deletes the mapping between TD and third-party service.
+        Set this flag to True, if you delete the underlying object in a
+        third-party service. Set it to False, if the object is still kept there
+        in a sort of "inactive" (completed, archived) state, and can be
+        uncompleted by a signal from Todoist later on.
+
+        If `delete_mapping` is set to True, then once you uncomplete the item
+        from Todoist, a new item will be created on a third-party service.
+        """
+        with self.lock():
+            source, target, source_side, target_side = self.find_direction(source)
+            mapping = self.get_mapping_by_task_id(source_side, task_id)
+            if not mapping:
+                # the task is not known to the bridge, ignore it
+                return
+
+            # push the complete command
+            target_id = mapping.side(target_side).id  # -> mapping.right_id, for example
+            target_extra = mapping.side(target_side).extra
+            if target_id:
+                logger.debug('%s completes a task %s', source, task_id,
+                             extra={'source': source, 'target': target, 'mapping': mapping})
+                target.complete_task(target_id, target_extra)
+
+            # clean up all traces of the object
+            if delete_mapping:
+                mapping.delete()
+
     def find_direction(self, source):
         if source == self.left:
             return self.left, self.right, 'left', 'right'
         elif source == self.right:
             return self.right, self.left, 'right', 'left'
         raise RuntimeError("Unknown source %r" % source)
+
+    def get_mapping_by_task_id(self, side, task_id):
+        """
+        Helper function to find the mapping, if several mappings found, use the last one
+        """
+        kw = {'%s_id' % side: task_id}  # i.e. left_id: 15
+        return ItemMapping.objects.bridge_filter(self, **kw).order_by('-id').first()
+
+    def create_mapping_by_task_id(self, side, task_id):
+        """
+        Helper function to create a new mapping
+        """
+        kw = {'%s_id' % side: task_id}  # i.e. left_id: 15
+        return ItemMapping.objects.bridge_create(self, **kw)
 
     def lock(self):
         """
@@ -187,6 +224,12 @@ class SyncAdapter(object):
     def delete_task(self, task_id, extra):
         """
         Delete task from the storage
+        """
+        raise NotImplementedError("Has to be implemented in a subclass")
+
+    def complete_task(self, task_id, extra):
+        """
+        Complete the task in the storage
         """
         raise NotImplementedError("Has to be implemented in a subclass")
 

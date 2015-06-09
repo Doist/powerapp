@@ -8,6 +8,7 @@ from logging import getLogger
 from django.core.urlresolvers import reverse
 from django.dispatch.dispatcher import Signal
 from django.utils.crypto import salted_hmac, constant_time_compare
+from django.conf import settings
 from powerapp.core import oauth
 from . import oauth_impl
 from powerapp.core.exceptions import PowerAppError
@@ -16,7 +17,7 @@ from django.utils.six.moves.urllib import parse
 
 
 logger = getLogger(__name__)
-CALENDAR_SUMMARY = 'Todoist'
+CALENDAR_SUMMARY = 'Todoist Playground' if settings.DEBUG else 'Todoist'
 WEBHOOK_HMAC_SALT = 'gcal-webhooks'
 
 

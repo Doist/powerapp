@@ -43,4 +43,4 @@ def on_gcal_event_changed(sender, integration=None, event=None, **kwargs):
 def on_gcal_event_deleted(sender, integration=None, event_id=None, **kwargs):
     bridge = sync_adapter.get_bridge_by_event_id(integration, event_id)
     # we don't delete task, but instead we mark the task as "checked"
-    bridge.push_task(bridge.right, event_id, task(checked=True, in_history=True))
+    bridge.complete_task(bridge.right, event_id, delete_mapping=True)

@@ -38,7 +38,7 @@ def accept(request):
         # quietly ignore invalid JSON
         return HttpResponse()
 
-    logger.debug('Receive webhook %s', data)
+    logger.debug('Receive webhook from Todoist', extra={'data': data})
 
     handle_stateful_integrations(data)
     handle_stateless_integrations(data)

@@ -42,6 +42,9 @@ class ItemMapping(models.Model):
     right_hash = models.CharField(u'Last seen hash of the item', max_length=64, default='!')
     right_extra = PickledObjectField(u'Extra data of the "right side"', default={})
 
+    def side(self, side_name):
+        return SideProxy(self, side_name)
+
     class Meta:
         index_together = [
             ['integration', 'bridge_name', 'left_id'],
@@ -68,6 +71,27 @@ class ItemMapping(models.Model):
                                            hash_and_extra(self.left_hash, self.left_extra),
                                            self.right_id,
                                            hash_and_extra(self.right_hash, self.right_extra))
+
+
+class SideProxy(object):
+    """
+    internal helper to replace ugly assignments like
+
+        >>> setattr(mapping, '%s_id' % side, value)
+
+    with more meaningful
+
+        >>> mapping.side('right').id = value
+    """
+    def __init__(self, item_mapping, side_name):
+        object.__setattr__(self, 'item_mapping', item_mapping)
+        object.__setattr__(self, 'side_name', side_name)
+
+    def __setattr__(self, key, value):
+        return setattr(self.item_mapping, '%s_%s' % (self.side_name, key), value)
+
+    def __getattr__(self, item):
+        return getattr(self.item_mapping, '%s_%s' % (self.side_name, item))
 
 
 def hash_and_extra(hash_value, extra_value):

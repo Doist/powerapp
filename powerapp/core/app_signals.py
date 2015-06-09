@@ -21,10 +21,6 @@ class TodoistSyncSignal(Signal):
         A wrapper around `send_robust` with logging and type conversion
         """
         if self.has_listeners():
-            logger.debug('Fire %s(%r, %r)' % (self.name,
-                                              integration.user.email,
-                                              obj['id']))
-
             # type conversion
             if not isinstance(obj, self.model):
                 obj = self.model(obj, integration.api)
@@ -35,8 +31,6 @@ class TodoistSyncSignal(Signal):
                     logger.error('%s() -> %s', func.__name__, item)
                     tb_lines = traceback.format_tb(item.__traceback__)
                     logger.error(''.join(tb_lines))
-                else:
-                    logger.debug('%s() -> %s', func.__name__, item)
 
 
 class ServiceAppSignals(object):

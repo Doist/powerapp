@@ -43,6 +43,10 @@ class TodoistSyncAdapter(SyncAdapter):
             return_or_raise(self.api.commit())
             return obj['id'], {}  # return task_id and extra
 
+    def complete_task(self, task_id, extra):
+        self.api.item_update(task_id, checked=True, in_history=True)
+        return_or_raise(self.api.commit())
+
     def delete_task(self, task_id, extra):
         with self.api.autocommit():
             self.api.item_delete(task_id)
