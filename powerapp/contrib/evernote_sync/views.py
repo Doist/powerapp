@@ -97,6 +97,13 @@ def accept_webhook(request, webhook_secret_key):
         # not an Evernote request
         return HttpResponse()
 
+    # "Webhook reasons" we react on: Evernote note created, Evernote note
+    # updated. Everything else is quietly ignored
+    reasons = {'create', 'update'}
+    reason = request.GET.get('reason')
+    if reason not in reasons:
+        return HttpResponse()
+
     # We react on userId and notebookGuid. If we have an integration to
     # sync, schedule a new evernote synchronization, but make sure we don't
     # perform sync more often than once in a minute
