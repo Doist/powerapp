@@ -2,7 +2,7 @@
 
 {% block extra_actions %}
     {% if form.integration %}
-    <form action="{% url "gcal_sync:sync_now" form.integration.id %}" id="sync_now" method="post">{% csrf_token %}
+    <form action="{% url "gcal_sync:sync_now" form.integration.id %}" id="sync_now" method="post">{% csrf_token %}</form>
     <a href="#" id="sync_now_link">sync now</a>
     {% endif %}
 {% endblock %}
