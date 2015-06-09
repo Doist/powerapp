@@ -67,9 +67,13 @@ class GcalSyncAdapter(SyncAdapter):
         user = self.bridge.integration.user
         client = utils.get_authorized_client(user)
 
+        logging_extra = {'task_id': task_id, 'task': task, 'extra': extra}
         if not task.due_date or task.due_date.second == 59:
             # ignore this task or try to delete it
             if task_id:
+                logger.debug("Delete GCal event because Todoist task "
+                             "doesn't have a date anymore",
+                             extra=logging_extra)
                 self.delete_task(task_id, extra)
             return None, None
 
@@ -108,8 +112,9 @@ class GcalSyncAdapter(SyncAdapter):
             command = utils.json_put
             url = '/calendars/%s/events/%s' % (self.get_calendar_id(), task_id)
         resp = command(client, url, **attrs)
-        logger.debug('Create or update a task on %s. '
-                     'Data: %s. Server replied: %s', url, attrs, resp)
+        logger.debug('Create GCal event', extra=dict(logging_extra,
+                                                     server_url=url,
+                                                     server_response=resp))
         new_extra = {
             'original_content': task.content,
             'original_due_date': task.due_date,
@@ -123,6 +128,9 @@ class GcalSyncAdapter(SyncAdapter):
         """
         client = utils.get_authorized_client(self.bridge.integration.user)
         url = '/calendars/%s/events/%s' % (self.get_calendar_id(), task_id)
+        logger.debug('Delete GCal event', extra={'task_id': task_id,
+                                                 'extra': extra,
+                                                 'server_url': url})
         utils.json_delete(client, url)
 
     def task_from_data(self, data, extra):
@@ -157,11 +165,8 @@ class GcalSyncAdapter(SyncAdapter):
 
         original_due_date = extra.get('original_due_date')
         if due_date_utc.replace(tzinfo=None) == original_due_date:
-            logger.debug('Due date was not changed. Don\'t update the date')
             due_date_utc = undefined
             date_string = undefined
-        else:
-            logger.debug('Due date changed from %s to %s. Update the date' % (original_due_date, due_date_utc))
 
         return task(content=content,
                     due_date=due_date_utc,

@@ -34,6 +34,13 @@ class Integration(models.Model):
     def __str__(self):
         return self.name
 
+    def __log__(self):
+        return {
+            'id': self.id,
+            'service': self.service_id,
+            'uid': self.user_id,
+        }
+
     class Meta:
         app_label = 'core'
         index_together = [

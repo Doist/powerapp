@@ -10,6 +10,7 @@ from powerapp.core import generic_views, oauth, django_forms
 from . import utils, oauth_impl, tasks
 from powerapp.core.exceptions import PowerAppError
 from powerapp.core.integration_utils import schedule_with_rate_limit
+from powerapp.core.logging_utils import ctx
 from powerapp.core.models.integration import Integration
 
 logger = getLogger(__name__)
@@ -74,17 +75,21 @@ def accept_webhook(request, integration_id):
     try:
         token_data = utils.validate_webhook_token(token)
     except PowerAppError:
-        logger.debug("Invalid token %s. Quietly ignore", token)
         return HttpResponse()
 
-    logger.debug('Received webhook from Google Calendar, '
-                 'channel_id=%s, token=%s, resource: (id=%s, state=%s, uri=%s)',
-                 channel_id, token, resource_id, resource_state, resource_uri)
-
-    if Integration.objects.filter(id=integration_id).exists():
-        subtask = tasks.sync_gcal.s(integration_id)
-        schedule_with_rate_limit(integration_id, 'last_sync', subtask)
-    else:
+    try:
+        integration = Integration.objects.get(id=integration_id)
+    except Integration.DoesNotExist:
         tasks.stop_channel.delay(token_data['u'], channel_id, resource_id)
+    else:
+        with ctx(integration=integration, user=integration.user):
+            logging_extra = {'channel_id': channel_id,
+                             'token': token,
+                             'resource_id': resource_id,
+                             'resource_state': resource_state,
+                             'resource_uri': resource_uri}
+            logger.debug('Received GCal webhook. Schedule Sync', extra=logging_extra)
+            subtask = tasks.sync_gcal.s(integration_id)
+            schedule_with_rate_limit(integration_id, 'last_sync', subtask)
 
     return HttpResponse()

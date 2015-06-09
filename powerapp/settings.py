@@ -180,7 +180,7 @@ LOGGING = {
     'formatters': {
         'colored': {
             '()': 'colorlog.ColoredFormatter',
-            'format': '%(log_color)s%(levelname)-8s%(reset)s %(blue)s%(message)s',
+            'format': '%(log_color)s%(levelname)-8s%(reset)s %(white)s%(name)s %(blue)s%(message)s',
             'reset': True,
             'log_colors': {
                 'DEBUG':    'cyan',

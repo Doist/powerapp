@@ -52,6 +52,7 @@ class SyncBridge(object):
         task.
         """
         with self.lock():
+
             source, target, source_side, target_side = self.find_direction(source)
 
             # find the mapping
@@ -62,30 +63,31 @@ class SyncBridge(object):
             if not mapping:
                 mapping = ItemMapping.objects.bridge_create(self, **kw)
 
+
             # make a task out of data
             source_extra = getattr(mapping, '%s_extra' % source_side)
             target_extra = getattr(mapping, '%s_extra' % target_side)
             task = source.task_from_data(data, source_extra)
 
             if task is None or is_task_undefined(task):
-                logger.debug('%s refuses to send %r (extra: %r)', source, data, source_extra)
                 return
 
             # calculate hashes
             source_hash = get_hash(task, source.ESSENTIAL_FIELDS)
             target_hash = get_hash(task, target.ESSENTIAL_FIELDS)
 
-            logger.debug('push task %s (%s) %s -> %s', task_id, source_hash,
-                         source, target)
-            logger.debug('... task: %s', task)
-            logger.debug('... extra: %s', source_extra)
+            logging_extra = {'source': source, 'target': target,
+                             'mapping': mapping, 'task': task}
 
             mapping_source_hash = getattr(mapping, '%s_hash' % source_side)
             mapping_target_hash = getattr(mapping, '%s_hash' % target_side)
             if mapping_source_hash == source_hash or mapping_target_hash == target_hash:
-                logger.debug('... hashes match, skip')
+                logger.debug('%s refuses to send a task %s (hashes match)',
+                             source, task_id, extra=logging_extra)
                 return
 
+            logger.debug('%s pushes a task %s', source, task_id,
+                         extra=logging_extra)
             target_id = getattr(mapping, '%s_id' % target_side)  # -> mapping.right_id, for example
 
             # push the task and get a new local id and extra data back
@@ -130,6 +132,11 @@ class SyncBridge(object):
             if target_id is None:
                 return
 
+            logging_extra = {'source': source, 'target': target,
+                             'mapping': mapping}
+
+            logger.debug('%s deletes a task %s', source, task_id,
+                         extra=logging_extra)
             target.delete_task(target_id, target_extra)
 
             # clean up all traces of the object

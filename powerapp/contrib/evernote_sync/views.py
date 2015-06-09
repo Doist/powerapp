@@ -15,8 +15,6 @@ from powerapp.core.integration_utils import schedule_with_rate_limit
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import build_absolute_uri
-from powerapp.sync_bridge.models import ItemMapping
-
 
 class EditIntegrationView(generic_views.EditIntegrationView):
     service_label = 'evernote_sync'

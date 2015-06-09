@@ -96,6 +96,13 @@ class User(AbstractBaseUser):
     def __str__(self):
         return self.email
 
+    def __log__(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+        }
+
+
 
 re_todoist_static_tz = re.compile(r'GMT ([+-])(\d+):00$')
 

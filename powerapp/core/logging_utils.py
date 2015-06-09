@@ -59,23 +59,11 @@ class ContextFilter(object):
 
     def process(self, key, value):
         """ helper function to convert whatever value to dict """
-        from powerapp.core.models import User, Integration
-
         if isinstance(value, datetime.datetime):
             return {key: value.isoformat()}
 
-        if isinstance(value, User):
-            return {
-                '%s_id' % key: value.id,
-                '%s_email' % key: value.email,
-            }
-
-        if isinstance(value, Integration):
-            return {
-                '%s_id' % key: value.id,
-                '%s_service' % key: value.service_id,
-                '%s_uid' % key: value.user_id,
-            }
+        if hasattr(value, '__log__') and callable(value.__log__):
+            return {'%s_%s' % (key, k): v for k, v in value.__log__()}
 
         return {key: force_text(value)}
 
