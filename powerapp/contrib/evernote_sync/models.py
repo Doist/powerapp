@@ -21,6 +21,7 @@ class EvernoteAccountCache(models.Model):
     last_update_time = models.DateTimeField(default=MILLENIUM)
     user_data = PickledObjectField(null=True)
     notebooks = PickledObjectField(null=True)
+    evernote_user_id = models.PositiveIntegerField(null=True, db_index=True)
 
     def refresh(self):
         """
@@ -35,6 +36,7 @@ class EvernoteAccountCache(models.Model):
 
         # update user_data
         self.user_data = client.get_user_store().getUser()
+        self.evernote_user_id = self.user_data.id
 
         # let's see if there are some updates in the note store
         note_store = client.get_note_store()

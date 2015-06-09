@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
+from django.http.response import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
 from django.utils.html import strip_tags
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from powerapp.contrib.evernote_sync.models import EvernoteAccountCache
 from powerapp.core import generic_views
 from . import forms, utils, tasks
+from powerapp.core.integration_utils import schedule_with_rate_limit
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import build_absolute_uri
+from powerapp.sync_bridge.models import ItemMapping
 
 
 class EditIntegrationView(generic_views.EditIntegrationView):
@@ -78,3 +84,39 @@ def sync_now(request, integration_id):
     tasks.sync_evernote.delay(integration.id)
     messages.info(request, 'Synchronization with Evernote scheduled')
     return redirect('evernote_sync:edit_integration', integration.id)
+
+
+@csrf_exempt
+def accept_webhook(request, webhook_secret_key):
+    """
+    Webhooks recipient, as described here:
+
+    https://dev.evernote.com/doc/articles/polling_notification.php
+    """
+    if settings.EVERNOTE_WEBHOOK_SECRET_KEY != webhook_secret_key:
+        # not an Evernote request
+        return HttpResponse()
+
+    # We react on userId and notebookGuid. If we have an integration to
+    # sync, schedule a new evernote synchronization, but make sure we don't
+    # perform sync more often than once in a minute
+    try:
+        user_id = int(request.GET.get('userId'))
+    except (TypeError, ValueError):
+        return HttpResponse()
+    notebook_guid = request.GET.get('notebookGuid')
+
+    # most likely, it's going to be no more than one cache object, and no
+    # more than one integration. Two or more Evernote accounts connected to
+    # the same client, or more than one Evernote integration per account
+    # is an exception
+    for cache in (EvernoteAccountCache.objects
+                          .filter(evernote_user_id=user_id)
+                          .select_related('user')):
+        for integration in cache.user.integration_set.filter(service_id='evernote_sync'):
+            notebooks = integration.settings.get('evernote_notebooks') or []
+            if notebook_guid in notebooks:
+                subtask = tasks.sync_evernote.s(integration.id)
+                schedule_with_rate_limit(integration.id, 'last_sync', subtask)
+
+    return HttpResponse()

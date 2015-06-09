@@ -18,3 +18,4 @@ class AppConfig(ServiceAppConfig):
     EVERNOTE_CONSUMER_KEY = env('EVERNOTE_CONSUMER_KEY', default=None)
     EVERNOTE_CONSUMER_SECRET = env('EVERNOTE_CONSUMER_SECRET', default=None)
     EVERNOTE_SANDBOX = env.bool('EVERNOTE_SANDBOX', default=True)
+    EVERNOTE_WEBHOOK_SECRET_KEY = env('EVERNOTE_WEBHOOK_SECRET_KEY', default=None)
