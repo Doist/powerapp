@@ -64,10 +64,11 @@ def on_note_deleted(sender, integration, guid, **kwargs):
         bridge.delete_task(bridge.right, guid)
 
 
-@AppConfig.periodic_task(datetime.timedelta(minutes=1 if settings.DEBUG else 15))
-def sync_evernote(integration):
-    try:
-        utils.sync_evernote(integration)
-    except PowerAppInvalidTokenError:
-        logger.warning("Evernote access token for %s not found. "
-                       "Skip synchronization", integration.user)
+if settings.EVERNOTE_USE_POLLING:
+    @AppConfig.periodic_task(datetime.timedelta(minutes=1 if settings.DEBUG else 15))
+    def sync_evernote(integration):
+        try:
+            utils.sync_evernote(integration)
+        except PowerAppInvalidTokenError:
+            logger.warning("Evernote access token for %s not found. "
+                           "Skip synchronization", integration.user)
