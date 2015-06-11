@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-import traceback
 from django.dispatch import Signal
 from logging import getLogger
+from powerapp.core.logging_utils import ctx
 from todoist import models
 
 logger = getLogger(__name__)
@@ -21,16 +21,24 @@ class TodoistSyncSignal(Signal):
         A wrapper around `send_robust` with logging and type conversion
         """
         if self.has_listeners():
-            # type conversion
+            # type conversion: we don't want plain dict as an obj
             if not isinstance(obj, self.model):
                 obj = self.model(obj, integration.api)
 
-            resp = self.send_robust(None, integration=integration, obj=obj)
-            for func, item in resp:
-                if hasattr(item, '__traceback__'):
-                    logger.error('%s() -> %s', func.__name__, item)
-                    tb_lines = traceback.format_tb(item.__traceback__)
-                    logger.error(''.join(tb_lines))
+            # note: we use "select_related('user')" to make sure we don't
+            # have a separate query for integration.user over here
+            with ctx(integration=integration, user=integration.user):
+                extra = {'signal_name': self.name, 'obj': obj}
+                logger.debug('Send Todoist event', extra=extra)
+                resp = self.send_robust(None, integration=integration, obj=obj)
+                for func, item in resp:
+                    # log exceptions
+                    if isinstance(item, Exception):
+                        exc_info = (item.__class__, item, item.__traceback__)
+                        logger.error('Todoist event handler %s() raises %r',
+                                     func.__name__, item,
+                                     exc_info=exc_info,
+                                     extra=dict(extra, func_name=func.__name__))
 
 
 class ServiceAppSignals(object):

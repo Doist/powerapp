@@ -11,6 +11,7 @@ from logging import getLogger
 from collections import namedtuple
 from django.utils.encoding import force_bytes, force_text
 from .models import ItemMapping
+from powerapp.core.logging_utils import ctx
 from powerapp.core.redis_utils import get_redis
 
 logger = getLogger(__name__)
@@ -51,7 +52,7 @@ class SyncBridge(object):
         The function has to be called whenever a user creates or updates a
         task.
         """
-        with self.lock():
+        with self.lock_and_ctx():
 
             source, target, source_side, target_side = self.find_direction(source)
             mapping = self.get_mapping_by_task_id(source_side, task_id)
@@ -109,7 +110,7 @@ class SyncBridge(object):
 
         The function has to be called whenever a user deletes a task
         """
-        with self.lock():
+        with self.lock_and_ctx():
             source, target, source_side, target_side = self.find_direction(source)
             mapping = self.get_mapping_by_task_id(source_side, task_id)
             if not mapping:
@@ -146,7 +147,7 @@ class SyncBridge(object):
         If `delete_mapping` is set to True, then once you uncomplete the item
         from Todoist, a new item will be created on a third-party service.
         """
-        with self.lock():
+        with self.lock_and_ctx():
             source, target, source_side, target_side = self.find_direction(source)
             mapping = self.get_mapping_by_task_id(source_side, task_id)
             if not mapping:
@@ -186,7 +187,7 @@ class SyncBridge(object):
         kw = {'%s_id' % side: task_id}  # i.e. left_id: 15
         return ItemMapping.objects.bridge_create(self, **kw)
 
-    def lock(self):
+    def lock_and_ctx(self):
         """
         Internal function returning a "global redis lock" to make sure we
         perform only one sync operation at a time.
@@ -194,8 +195,9 @@ class SyncBridge(object):
         lock_name = 'sync-bridge-%s-%s' % (self.integration.id, self.name)
         lock_timeout = 60 * 5  # no more than 5 mins per sync operation
         blocking_timeout = 30  # no more than 30 seconds waiting for the lock
-        return get_redis().lock(lock_name, timeout=lock_timeout,
-                                blocking_timeout=blocking_timeout)
+        with ctx(integration=self.integration, user=self.integration.user):
+            return get_redis().lock(lock_name, timeout=lock_timeout,
+                                    blocking_timeout=blocking_timeout)
 
     def __str__(self):
         return self.name

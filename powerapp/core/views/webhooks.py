@@ -38,8 +38,6 @@ def accept(request):
         # quietly ignore invalid JSON
         return HttpResponse()
 
-    logger.debug('Receive webhook from Todoist', extra={'data': data})
-
     handle_stateful_integrations(data)
     handle_stateless_integrations(data)
 
@@ -74,9 +72,10 @@ def handle_stateless_integrations(data):
     user_ids = {ev['user_id'] for ev in data}
 
     # 1. Get all integrations
-    integrations = Integration.objects.filter(user_id__in=user_ids,
-                                              stateless=True,
-                                              service_enabled=True).order_by('user_id')
+    integrations = (Integration.objects.filter(user_id__in=user_ids,
+                                               stateless=True,
+                                               service_enabled=True)
+                    .select_related('user').order_by('user_id'))
 
     # 2. Group them by user id
     user_integrations = {}
