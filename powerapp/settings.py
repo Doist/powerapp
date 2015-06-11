@@ -152,6 +152,10 @@ CELERYBEAT_SCHEDULE = {
 }
 CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
 
+# Kill tasks after 5 minutes of execution by default
+# Use time_limit argument to override this value for a particular task
+CELERYD_TASK_TIME_LIMIT = 60 * 5
+
 # ==========================================================
 # Statsd settings
 # ==========================================================
