@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from logging import getLogger
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,9 +13,14 @@ from powerapp.contrib.evernote_sync.models import EvernoteAccountCache
 from powerapp.core import generic_views
 from . import forms, utils, tasks
 from powerapp.core.integration_utils import schedule_with_rate_limit
+from powerapp.core.logging_utils import ctx
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.oauth import OAuthToken
 from powerapp.core.web_utils import build_absolute_uri
+
+
+logger = getLogger(__name__)
+
 
 class EditIntegrationView(generic_views.EditIntegrationView):
     service_label = 'evernote_sync'
@@ -79,7 +85,10 @@ def sync_now(request, integration_id):
     integration = get_object_or_404(Integration,
                                     id=integration_id,
                                     user_id=request.user.id)
-    tasks.sync_evernote.delay(integration.id)
+
+    subtask = tasks.sync_evernote.s(integration.id)
+    schedule_with_rate_limit(integration.id, 'last_sync', subtask, timeout=120)
+
     messages.info(request, 'Synchronization with Evernote scheduled')
     return redirect('evernote_sync:edit_integration', integration.id)
 
@@ -121,7 +130,9 @@ def accept_webhook(request, webhook_secret_key):
         for integration in cache.user.integration_set.filter(service_id='evernote_sync'):
             notebooks = integration.settings.get('evernote_notebooks') or []
             if notebook_guid in notebooks:
-                subtask = tasks.sync_evernote.s(integration.id)
-                schedule_with_rate_limit(integration.id, 'last_sync', subtask)
+                with ctx(integration=integration, user=integration.user):
+                    logger.debug('Received Evernote webhook. Schedule Sync')
+                    subtask = tasks.sync_evernote.s(integration.id)
+                    schedule_with_rate_limit(integration.id, 'last_sync', subtask, timeout=120)
 
     return HttpResponse()

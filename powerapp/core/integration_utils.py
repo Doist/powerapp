@@ -33,6 +33,11 @@ def schedule_with_rate_limit(integration_id, last_op_settings_key,
 
     - Return the time (always in future) on which the task is scheduled, or
       None, if integration is not found
+
+    - The task doesn't have to be executed more that `timeout` seconds. We
+      enforce this by setting up the time_limit and soft_time_limit (timeout - 10s).
+      If worker wants to react on soft time limit, it has to catch the
+      SoftTimeLimitExceeded exception
     """
     try:
         integration = Integration.objects.get(id=integration_id)
@@ -42,16 +47,19 @@ def schedule_with_rate_limit(integration_id, last_op_settings_key,
     last_op = integration.settings.get(last_op_settings_key)
     now = int(time.time())
 
+    apply_async_kwargs = {'time_limit': timeout,
+                          'soft_time_limit': timeout if timeout < 20 else timeout - 10}
+
     if not last_op or last_op < now - timeout:
         integration.update_settings(**{last_op_settings_key: now})
-        task.apply_async()
+        task.apply_async(**apply_async_kwargs)
         return now
 
     if last_op < now:
         next_schedule = last_op + timeout
         countdown = next_schedule - now
         integration.update_settings(**{last_op_settings_key: next_schedule})
-        task.apply_async(countdown=countdown)
+        task.apply_async(countdown=countdown, **apply_async_kwargs)
         return next_schedule
 
     # otherwise last op is in future, just return the value

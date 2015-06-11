@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 from . import utils
+from celery.exceptions import SoftTimeLimitExceeded
 from requests import HTTPError
 from powerapp.celery_local import app
 from powerapp.contrib.gcal_sync.utils import get_authorized_client, json_post
 from powerapp.core.models.integration import Integration
 from powerapp.core.models.user import User
 from powerapp.core.logging_utils import ctx
+from logging import getLogger
+
+
+logger = getLogger(__name__)
 
 
 @app.task(ignore_result=True)
@@ -22,11 +27,14 @@ def create_calendar(integration_id):
 @app.task(ignore_result=True)
 def sync_gcal(integration_id):
     try:
-        integration = Integration.objects.get(id=integration_id)
+        integration = Integration.objects.select_related('user').get(id=integration_id)
     except Integration.DoesNotExist:
         return
     with ctx(user=integration.user, integration=integration):
-        utils.sync_gcal(integration)
+        try:
+            utils.sync_gcal(integration)
+        except SoftTimeLimitExceeded:
+            logger.error('Synchronization with GCal took too long and was aborted')
 
 
 @app.task(ignore_result=True)
