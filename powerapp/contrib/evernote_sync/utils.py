@@ -44,7 +44,8 @@ def get_notebooks(user):
     """
     cache = get_evernote_account_cache(user)
     cache.refresh()
-    return cache.notebooks
+    notebooks = cache.notebooks
+    return sorted(notebooks, key=lambda n: n.name)
 
 
 def get_evernote_timezone(user):

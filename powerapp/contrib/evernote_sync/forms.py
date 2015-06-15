@@ -1,42 +1,13 @@
 # -*- coding: utf-8 -*-
 from django import forms
-from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from evernote.edam.error.ttypes import EDAMSystemException
+from evernote.edam.error.ttypes import EDAMSystemException, EDAMUserException
 from powerapp.core import django_forms
 
 from . import utils
+from powerapp.core.django_widgets import SwitchWidget
 from powerapp.core.exceptions import PowerAppInvalidTokenError
 
 DEFAULT_PROJECT_NAME = u'Evernote'
-
-
-class SwitchWidget(forms.Widget):
-
-    choices = []
-
-    def value_from_datadict(self, data, files, name):
-        return data.getlist(name, None)
-
-    def render(self, name, value, attrs=None):
-        checked_options = set(value or [])
-        ret = []
-        for value, label in self.choices:
-            ret.append(self.render_checkbox(name, value, label,
-                                            value in checked_options))
-        return mark_safe('\n'.join(ret))
-
-    @staticmethod
-    def render_checkbox(name, value, label, checked):
-        checked_str = mark_safe(' checked') if checked else ''
-        return format_html(u'<p></p>'
-                           u'<div class="switch">'
-                           u'   <label>'
-                           u'       <input type="checkbox" name="{}" value="{}"{}>'
-                           u'       <span class="lever"></span>'
-                           u'       {}'
-                           u'   </label>'
-                           u'</div>', name, value, checked_str, label)
 
 
 class EvernoteChoiceField(forms.MultipleChoiceField):
@@ -44,10 +15,9 @@ class EvernoteChoiceField(forms.MultipleChoiceField):
     widget = SwitchWidget
 
     def populate_with_user(self, user):
-        EDAMSystemException(rateLimitDuration=None, message='authenticationToken', errorCode=8)
         try:
             notebooks = utils.get_notebooks(user)
-        except EDAMSystemException:
+        except (EDAMSystemException, EDAMUserException):
             # looks like the auth token is expired, delete and re-issue it
             raise PowerAppInvalidTokenError()
 
