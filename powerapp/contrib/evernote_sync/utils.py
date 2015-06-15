@@ -65,12 +65,10 @@ def get_note_url(note):
     https://dev.evernote.com/doc/articles/note_links.php, like
     https://[service]/shard/[shardId]/nl/[userId]/[noteGuid]/ , but we prefer
     to have more user-friendly URLs like
-    https://[service]/Home.action?#b=[notebookGuid]&st=p&n=[noteGuid]
+    https://[service]/Home.action?#n=[noteGuid]
     """
     client = get_unauthorized_evernote_client()
-    return 'https://%s/Home.action?#b=%s&st=p&n=%s' % (
-        client.service_host, note.notebookGuid, note.guid,
-    )
+    return 'https://%s/Home.action?#n=%s' % (client.service_host, note.guid)
 
 
 def get_evernote_account_cache(user):
