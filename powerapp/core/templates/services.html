@@ -2,6 +2,7 @@
 
 {% block content %}
     {% for service in services %}
+        {% if not service.has_installation or not service.unique_per_user %}
         <div class="service-card">
                 <div class="service-picture">
                     <img src="{{ service.logo_url }}"
@@ -17,6 +18,7 @@
                         Add</a>
                 </div>
         </div>
+        {% endif %}
     {% endfor %}
 
 {% endblock %}

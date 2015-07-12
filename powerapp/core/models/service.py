@@ -30,6 +30,7 @@ class Service(models.Model):
     name = models.CharField('Service name', max_length=256)
     path = models.CharField('Service path', max_length=1024)
     enabled = models.BooleanField('Service enabled', default=True)
+    unique_per_user = models.BooleanField('True - user can add only one integration', default=True)
 
     class Meta:
         app_label = 'core'
@@ -72,6 +73,9 @@ class Service(models.Model):
     @cached_property
     def logo_url(self):
         return staticfiles_storage.url(self.logo_filename)
+
+    def has_installation(self):
+        return bool(self.integration_set.count())
 
     def event_handler(self, event_name, hooks=True, sync=False):
         """ decorator for registering event handlers.
